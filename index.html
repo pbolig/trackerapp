@@ -382,11 +382,11 @@ const II = [
 // ─── FIREBASE CONFIG ──────────────────────────────────
 // ▼▼▼ ADMINISTRADOR: completá estos valores con tu Firebase ▼▼▼
 const FIREBASE_CFG = {
-  apiKey:"AIzaSyD_cPC7-GK_CjRkGcCKyv6ozk89Yx0VPjw",
-  authDomain:"trackerapp-7331d.firebaseapp.com",
-  databaseURL:"https://trackerapp-7331d-default-rtdb.firebaseio.com",
-  projectId:"trackerapp-7331d",
-  appId:"1:19428285620:web:dd0c7b093ccd6a007bcbe1"
+  apiKey:      "REEMPLAZAR_API_KEY",
+  authDomain:  "REEMPLAZAR_AUTH_DOMAIN",
+  databaseURL: "REEMPLAZAR_DATABASE_URL",
+  projectId:   "REEMPLAZAR_PROJECT_ID",
+  appId:       "REEMPLAZAR_APP_ID"
 };
 // ▲▲▲ Solo el administrador edita esto, los usuarios no tocan nada ▲▲▲
 
@@ -395,15 +395,15 @@ let db=null, fbInst=null;
 async function tryConnect(cfg){
   if(fbInst){ try{ fbInst.delete(); }catch{} }
   if(!cfg.databaseURL||!cfg.databaseURL.startsWith('https://')){
-    throw new Error('databaseURL inválida. Debe comenzar con https:// (ej: https://mi-proyecto-default-rtdb.firebaseio.com)');
+    throw new Error('databaseURL inválida. Debe comenzar con https://');
   }
   const cleanCfg={...cfg, databaseURL:cfg.databaseURL.replace(/\/+$/, '')};
   fbInst = initializeApp(cleanCfg, 'ta_'+Date.now());
   db = getDatabase(fbInst);
-  await Promise.race([
-    get(ref(db,'_ping')).then(()=>true),
-    new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout al conectar. Verificá el databaseURL y las reglas de la Realtime Database (deben estar en modo prueba o con lectura abierta).')),8000))
-  ]);
+  // Simple connect — no timeout race, let Firebase handle it
+  const snap = await get(ref(db,'_ping'));
+  // snap.val() will be null if node doesn't exist, that's fine — connection works
+  return true;
 }
 
 // ─── ADMIN MODAL (Ctrl+Shift+A) ───────────────────────
@@ -459,11 +459,29 @@ function setConn(c,l){ q('#connDot').className=c; q('#connLbl').textContent=l; }
 
 // ─── START APP ────────────────────────────────────────
 async function startApp(){
-  q('#appLoading').style.display='flex'; q('#appLoading').classList.remove('hidden');
-  const [ps,es,vs,cs,hs,ns] = await Promise.all([
-    get(R.projects()), get(ref(db,'envs')), get(ref(db,'versions')),
-    get(ref(db,'checklists')), get(R.hist()), get(ref(db,'notes'))
-  ]);
+  const loadEl = q('#appLoading');
+  const loadP  = q('#appLoading p');
+  loadEl.style.display='flex'; loadEl.classList.remove('hidden');
+  if(loadP) loadP.textContent='Cargando datos...';
+  let ps,es,vs,cs,hs,ns;
+  try{
+    [ps,es,vs,cs,hs,ns] = await Promise.all([
+      get(R.projects()), get(ref(db,'envs')), get(ref(db,'versions')),
+      get(ref(db,'checklists')), get(R.hist()), get(ref(db,'notes'))
+    ]);
+  } catch(err){
+    loadEl.innerHTML=`
+      <div style="text-align:center;max-width:420px;padding:24px">
+        <div style="font-family:var(--display);font-size:1.8rem;letter-spacing:3px;margin-bottom:16px">TRACKER<span style="color:var(--acc)">APP</span></div>
+        <div style="background:var(--s2);border:1px solid var(--err);border-radius:8px;padding:20px;font-size:.8rem;color:var(--txt2);line-height:1.8">
+          <strong style="color:var(--err)">Error al cargar datos</strong><br><br>
+          ${err.message}<br><br>
+          <span style="color:var(--txt3)">Verificá las reglas de la Realtime Database en Firebase Console.<br>
+          Deben tener <code style="background:var(--s3);padding:1px 4px;border-radius:3px">.read: true</code></span>
+        </div>
+      </div>`;
+    return;
+  }
   S.projects   = o2a(ps.val());
   S.envs       = es.val()||{};
   S.versions   = vs.val()||{};
@@ -835,35 +853,56 @@ window.toast=(msg,type='ok')=>{ const el=q('#toast'); el.textContent=msg; el.cla
 
 // ─── BOOT ─────────────────────────────────────────────
 (async()=>{
-  const notConfigured = FIREBASE_CFG.apiKey.startsWith('REEMPLAZAR');
-  if(notConfigured){
-    q('#appLoading').innerHTML=`
-      <div style="text-align:center;max-width:480px;padding:24px">
-        <div style="font-family:var(--display);font-size:1.8rem;letter-spacing:3px;margin-bottom:16px">TRACKER<span style="color:var(--acc)">APP</span></div>
-        <div style="background:var(--s2);border:1px solid var(--err);border-radius:8px;padding:20px;font-size:.8rem;color:var(--txt2);line-height:1.8">
-          <strong style="color:var(--err)">⚠ App no configurada</strong><br><br>
-          El administrador debe editar el archivo <code style="background:var(--s3);padding:2px 6px;border-radius:3px;color:var(--acc2)">index.html</code>
-          y completar la sección <code style="background:var(--s3);padding:2px 6px;border-radius:3px;color:var(--acc2)">FIREBASE_CFG</code>
-          con las credenciales de Firebase antes de publicar la app.
-        </div>
-      </div>`;
-    q('#appLoading').classList.remove('hidden');
+  const ld = document.getElementById('appLoading');
+  const setLdMsg = (html) => { ld.innerHTML = html; };
+
+  const errBox = (title, lines) => `
+    <div style="text-align:center;max-width:500px;padding:24px;font-family:'IBM Plex Mono',monospace">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:3px;margin-bottom:16px;color:#eef1f8">TRACKER<span style="color:#3b82f6">APP</span></div>
+      <div style="background:#161b23;border:1px solid #f43f5e;border-radius:8px;padding:20px;font-size:.78rem;color:#a8b8d0;line-height:2;text-align:left">
+        <strong style="color:#f43f5e">${title}</strong><br><br>${lines}
+      </div>
+    </div>`;
+
+  // 1. Check not placeholder
+  if(FIREBASE_CFG.apiKey.startsWith('REEMPLAZAR')){
+    setLdMsg(errBox('App no configurada',
+      'El administrador debe completar la sección <code style="background:#1d232e;padding:1px 5px;border-radius:3px;color:#60a5fa">FIREBASE_CFG</code> en el HTML con las credenciales de Firebase.'));
     return;
   }
-  try{ await tryConnect(FIREBASE_CFG); startApp(); }
-  catch(e){
-    q('#appLoading').innerHTML=`
-      <div style="text-align:center;max-width:420px;padding:24px">
-        <div style="font-family:var(--display);font-size:1.8rem;letter-spacing:3px;margin-bottom:16px">TRACKER<span style="color:var(--acc)">APP</span></div>
-        <div style="background:var(--s2);border:1px solid var(--err);border-radius:8px;padding:20px;font-size:.8rem;color:var(--txt2);line-height:1.8">
-          <strong style="color:var(--err)">Error de conexión</strong><br><br>
-          No se pudo conectar con Firebase.<br>
-          <span style="color:var(--txt3)">${e.message}</span><br><br>
-          Verificá las credenciales en el HTML o revisá las reglas de la Realtime Database.
-        </div>
-      </div>`;
+
+  // 2. Show connecting status with config preview
+  ld.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;font-family:'IBM Plex Mono',monospace">
+      <div style="width:30px;height:30px;border:3px solid #222a38;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite"></div>
+      <p style="color:#6b7e9a;font-size:.78rem">Conectando con Firebase...</p>
+      <div style="background:#0f1318;border:1px solid #222a38;border-radius:6px;padding:10px 16px;font-size:.7rem;color:#6b7e9a;max-width:380px;text-align:left">
+        <div>🔗 <span style="color:#a8b8d0">${FIREBASE_CFG.databaseURL}</span></div>
+        <div>📦 <span style="color:#a8b8d0">${FIREBASE_CFG.projectId}</span></div>
+      </div>
+    </div>`;
+
+  // 3. Try connecting
+  try{
+    await tryConnect(FIREBASE_CFG);
+  } catch(e){
+    setLdMsg(errBox('⚠ Error de conexión',
+      `<strong style="color:#eef1f8">Detalle:</strong> <code style="background:#1d232e;padding:1px 5px;border-radius:3px;color:#60a5fa">${e.message}</code><br><br>
+       <strong style="color:#eef1f8">Verificá:</strong><br>
+       1. Firebase Console → Realtime Database → <strong>Reglas</strong> → que diga <code style="background:#1d232e;padding:1px 4px;border-radius:3px;color:#22d3a0">".read": true, ".write": true</code><br>
+       2. Que el <code style="background:#1d232e;padding:1px 4px;border-radius:3px;color:#60a5fa">databaseURL</code> sea exactamente el que aparece en Firebase Console<br>
+       3. Que la Realtime Database esté creada (no solo el proyecto)`));
+    return;
   }
-})();
-</script>
+
+  // 4. Load data
+  try{
+    await startApp();
+  } catch(e){
+    setLdMsg(errBox('⚠ Error al cargar datos',
+      `<code style="background:#1d232e;padding:1px 5px;border-radius:3px;color:#60a5fa">${e.message}</code><br><br>
+       Revisá las reglas de la Realtime Database.`));
+  }
+})();</script>
 </body>
 </html>
