@@ -382,40 +382,25 @@ const II = [
 // ─── FIREBASE CONFIG ──────────────────────────────────
 // ▼▼▼ ADMINISTRADOR: completá estos valores con tu Firebase ▼▼▼
 const FIREBASE_CFG = {
-  apiKey:      "AIzaSyD_cPC7-GK_CjRkGcCKyv6ozk89Yx0VPjw",
-  authDomain:  "trackerapp-7331d.firebaseapp.com",
-  databaseURL: "https://trackerapp-7331d-default-rtdb.firebaseio.com",
-  projectId:   "trackerapp-7331d",
-  appId:       "1:19428285620:web:dd0c7b093ccd6a007bcbe1"
+  apiKey:"AIzaSyD_cPC7-GK_CjRkGcCKyv6ozk89Yx0VPjw",
+  authDomain:"trackerapp-7331d.firebaseapp.com",
+  databaseURL:"https://trackerapp-7331d-default-rtdb.firebaseio.com",
+  projectId:"trackerapp-7331d",
+  appId:"1:19428285620:web:dd0c7b093ccd6a007bcbe1"
 };
 // ▲▲▲ Solo el administrador edita esto, los usuarios no tocan nada ▲▲▲
 
 let db=null, fbInst=null;
 
 async function tryConnect(cfg){
-  if(!cfg.databaseURL || !cfg.databaseURL.startsWith('https://')){
-    throw new Error('databaseURL inválida — debe empezar con https://');
+  if(!cfg.databaseURL||!cfg.databaseURL.startsWith('https://')){
+    throw new Error('databaseURL inválida');
   }
-  const c = {...cfg, databaseURL: cfg.databaseURL.replace(/\/+$/, '')};
-  fbInst = initializeApp(c, 'trackerapp');
-  db     = getDatabase(fbInst);
-  // Wait for confirmed connection via .info/connected
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error(
-      'Timeout de conexión (10s). Verificá que el databaseURL sea correcto y que las reglas permitan lectura.'
-    )), 10000);
-    const connRef = ref(db, '.info/connected');
-    const unsub = onValue(connRef, (snap) => {
-      if(snap.val() === true){
-        clearTimeout(timeout);
-        unsub();
-        resolve();
-      }
-    }, (err) => {
-      clearTimeout(timeout);
-      reject(err);
-    });
-  });
+  const c={...cfg,databaseURL:cfg.databaseURL.replace(/\/+$/, '')};
+  fbInst = initializeApp(c,'trackerapp');
+  db = getDatabase(fbInst);
+  // Just initialize - don't wait for connection confirmation
+  // Firebase will connect asynchronously and sync when ready
 }
 
 // ─── ADMIN MODAL (Ctrl+Shift+A) ───────────────────────
@@ -471,58 +456,66 @@ function setConn(c,l){ q('#connDot').className=c; q('#connLbl').textContent=l; }
 
 // ─── START APP ────────────────────────────────────────
 async function startApp(){
-  // Show loading
   const ld = document.getElementById('appLoading');
-  ld.style.display = 'flex';
-  ld.classList.remove('hidden');
-  ld.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;font-family:'IBM Plex Mono',monospace">
-      <div style="width:30px;height:30px;border:3px solid #222a38;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite"></div>
-      <p style="color:#6b7e9a;font-size:.78rem">Cargando datos...</p>
-    </div>`;
+  ld.style.display='flex'; ld.classList.remove('hidden');
+  ld.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;gap:14px;font-family:'IBM Plex Mono',monospace">
+    <div style="width:30px;height:30px;border:3px solid #222a38;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite"></div>
+    <p style="color:#6b7e9a;font-size:.78rem">Cargando datos...</p>
+    <div style="background:#0f1318;border:1px solid #222a38;border-radius:6px;padding:10px 16px;font-size:.7rem;color:#6b7e9a;max-width:380px;text-align:left">
+      <div>🔗 <span style="color:#a8b8d0">${FIREBASE_CFG.databaseURL}</span></div>
+      <div>📦 <span style="color:#a8b8d0">${FIREBASE_CFG.projectId}</span></div>
+    </div>
+  </div>`;
 
-  // Load all data
-  const ps = await get(ref(db, 'projects'));
-  const es = await get(ref(db, 'envs'));
-  const vs = await get(ref(db, 'versions'));
-  const cs = await get(ref(db, 'checklists'));
-  const hs = await get(ref(db, 'history'));
-  const ns = await get(ref(db, 'notes'));
+  // Use onValue for initial load - fires immediately with cached data
+  // and again when online data arrives
+  let loaded = false;
 
-  S.projects   = o2a(ps.val());
-  S.envs       = es.val() || {};
-  S.versions   = vs.val() || {};
-  S.checklists = cs.val() || {};
-  S.history    = o2a(hs.val());
-  S.notes      = ns.val() || {};
+  function doLoad(ps,es,vs,cs,hs,ns){
+    S.projects   = o2a(ps); S.envs=es||{}; S.versions=vs||{};
+    S.checklists = cs||{}; S.history=o2a(hs); S.notes=ns||{};
 
-  // Seed TESIN if no projects exist
-  if(!S.projects.length){
-    const id  = 'proj_tesin';
-    const p   = {id, name:'TESIN', desc:'Sistema de Comercio Exterior', bus: ALL_BUS};
-    await set(ref(db, 'projects/' + id), p);
-    S.projects = [p];
-    for(const bu of ALL_BUS){
-      const k = id + '__' + bu;
-      if(!S.envs[k]){
-        await set(ref(db, 'envs/' + k), envTpl());
-        S.envs[k] = envTpl();
-      }
+    if(!S.projects.length){
+      const id='proj_tesin';
+      const p={id,name:'TESIN',desc:'Sistema de Comercio Exterior',bus:ALL_BUS};
+      set(ref(db,'projects/'+id),p);
+      S.projects=[p];
+      ALL_BUS.forEach(bu=>{
+        const k=id+'__'+bu;
+        if(!S.envs[k]){ set(ref(db,'envs/'+k),envTpl()); S.envs[k]=envTpl(); }
+      });
+    }
+
+    if(!loaded){
+      loaded=true;
+      curProjId=S.projects[0].id; curBU=S.projects[0].bus[0];
+      subscribe();
+      ld.classList.add('hidden');
+      document.getElementById('appHeader').style.display='flex';
+      document.getElementById('appMain').style.display='block';
+      setConn('online','conectado');
+      renderAll();
     }
   }
 
-  curProjId = S.projects[0].id;
-  curBU     = S.projects[0].bus[0];
-
-  // Subscribe to live updates
-  subscribe();
-
-  // Show app
-  ld.classList.add('hidden');
-  document.getElementById('appHeader').style.display = 'flex';
-  document.getElementById('appMain').style.display   = 'block';
-  setConn('online', 'conectado');
-  renderAll();
+  // Try with individual gets, catching each one
+  try{
+    const results = await Promise.all([
+      get(ref(db,'projects')).then(s=>s.val()).catch(()=>null),
+      get(ref(db,'envs')).then(s=>s.val()).catch(()=>{}),
+      get(ref(db,'versions')).then(s=>s.val()).catch(()=>{}),
+      get(ref(db,'checklists')).then(s=>s.val()).catch(()=>{}),
+      get(ref(db,'history')).then(s=>s.val()).catch(()=>null),
+      get(ref(db,'notes')).then(s=>s.val()).catch(()=>{})
+    ]);
+    doLoad(...results);
+  } catch(err){
+    ld.innerHTML=`<div style="text-align:center;max-width:480px;padding:24px;font-family:'IBM Plex Mono',monospace">
+      <div style="background:#161b23;border:1px solid #f43f5e;border-radius:8px;padding:20px;font-size:.78rem;color:#a8b8d0;line-height:1.9;text-align:left">
+        <strong style="color:#f43f5e">⚠ Error al cargar</strong><br><br>
+        <code style="color:#60a5fa">${err.message}</code>
+      </div></div>`;
+  }
 }
 
 function subscribe(){
@@ -875,55 +868,98 @@ window.toast=(msg,type='ok')=>{ const el=q('#toast'); el.textContent=msg; el.cla
 // ─── BOOT ─────────────────────────────────────────────
 (async()=>{
   const ld = document.getElementById('appLoading');
-  const setLdMsg = (html) => { ld.innerHTML = html; };
 
-  const errBox = (title, lines) => `
-    <div style="text-align:center;max-width:500px;padding:24px;font-family:'IBM Plex Mono',monospace">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:3px;margin-bottom:16px;color:#eef1f8">TRACKER<span style="color:#3b82f6">APP</span></div>
-      <div style="background:#161b23;border:1px solid #f43f5e;border-radius:8px;padding:20px;font-size:.78rem;color:#a8b8d0;line-height:2;text-align:left">
-        <strong style="color:#f43f5e">${title}</strong><br><br>${lines}
-      </div>
-    </div>`;
-
-  // 1. Check not placeholder
+  // Check configured
   if(FIREBASE_CFG.apiKey.startsWith('REEMPLAZAR')){
-    setLdMsg(errBox('App no configurada',
-      'El administrador debe completar la sección <code style="background:#1d232e;padding:1px 5px;border-radius:3px;color:#60a5fa">FIREBASE_CFG</code> en el HTML con las credenciales de Firebase.'));
+    ld.innerHTML=`<div style="text-align:center;padding:24px;font-family:'IBM Plex Mono',monospace;max-width:460px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:3px;color:#eef1f8;margin-bottom:12px">TRACKER<span style="color:#3b82f6">APP</span></div>
+      <div style="background:#161b23;border:1px solid #f43f5e;border-radius:8px;padding:18px;font-size:.78rem;color:#a8b8d0;line-height:1.8">
+        <strong style="color:#f43f5e">App no configurada</strong><br><br>
+        Completá la sección <code style="background:#1d232e;padding:1px 5px;border-radius:3px;color:#60a5fa">FIREBASE_CFG</code> en el HTML.
+      </div></div>`;
     return;
   }
 
-  // 2. Show connecting status with config preview
-  ld.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;font-family:'IBM Plex Mono',monospace">
-      <div style="width:30px;height:30px;border:3px solid #222a38;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite"></div>
-      <p style="color:#6b7e9a;font-size:.78rem">Conectando con Firebase...</p>
-      <div style="background:#0f1318;border:1px solid #222a38;border-radius:6px;padding:10px 16px;font-size:.7rem;color:#6b7e9a;max-width:380px;text-align:left">
-        <div>🔗 <span style="color:#a8b8d0">${FIREBASE_CFG.databaseURL}</span></div>
-        <div>📦 <span style="color:#a8b8d0">${FIREBASE_CFG.projectId}</span></div>
-      </div>
-    </div>`;
+  // Show status
+  ld.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;gap:14px;font-family:'IBM Plex Mono',monospace">
+    <div style="width:30px;height:30px;border:3px solid #222a38;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite"></div>
+    <p style="color:#6b7e9a;font-size:.78rem">Conectando...</p>
+    <div style="background:#0f1318;border:1px solid #222a38;border-radius:6px;padding:10px 16px;font-size:.7rem;color:#6b7e9a;max-width:380px;text-align:left">
+      <div>🔗 <span style="color:#a8b8d0">${FIREBASE_CFG.databaseURL}</span></div>
+      <div>📦 <span style="color:#a8b8d0">${FIREBASE_CFG.projectId}</span></div>
+    </div>
+  </div>`;
 
-  // 3. Try connecting
+  const showErr = (msg) => {
+    ld.innerHTML=`<div style="text-align:center;padding:24px;font-family:'IBM Plex Mono',monospace;max-width:500px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:3px;color:#eef1f8;margin-bottom:12px">TRACKER<span style="color:#3b82f6">APP</span></div>
+      <div style="background:#161b23;border:1px solid #f43f5e;border-radius:8px;padding:18px;font-size:.78rem;color:#a8b8d0;line-height:1.9;text-align:left">
+        <strong style="color:#f43f5e">⚠ Error</strong><br><br>
+        <code style="color:#60a5fa;font-size:.74rem">${msg}</code><br><br>
+        <strong style="color:#eef1f8">Checklist:</strong><br>
+        1. Firebase Console → Realtime Database → <strong>Reglas</strong> deben tener <code style="color:#22d3a0">".read":true,".write":true</code><br>
+        2. El databaseURL debe coincidir exactamente con el que aparece en Firebase Console<br>
+        3. La Realtime Database debe estar creada (no solo el proyecto)
+      </div></div>`;
+  };
+
+  // Init Firebase
   try{
-    await tryConnect(FIREBASE_CFG);
-  } catch(e){
-    setLdMsg(errBox('⚠ Error de conexión',
-      `<strong style="color:#eef1f8">Detalle:</strong> <code style="background:#1d232e;padding:1px 5px;border-radius:3px;color:#60a5fa">${e.message}</code><br><br>
-       <strong style="color:#eef1f8">Verificá:</strong><br>
-       1. Firebase Console → Realtime Database → <strong>Reglas</strong> → que diga <code style="background:#1d232e;padding:1px 4px;border-radius:3px;color:#22d3a0">".read": true, ".write": true</code><br>
-       2. Que el <code style="background:#1d232e;padding:1px 4px;border-radius:3px;color:#60a5fa">databaseURL</code> sea exactamente el que aparece en Firebase Console<br>
-       3. Que la Realtime Database esté creada (no solo el proyecto)`));
-    return;
+    const cfg = {...FIREBASE_CFG, databaseURL: FIREBASE_CFG.databaseURL.replace(/\/+$/,'')};
+    fbInst = initializeApp(cfg, 'trackerapp');
+    db     = getDatabase(fbInst);
+  } catch(e){ showErr('Error al inicializar Firebase: '+e.message); return; }
+
+  // Load data with individual requests so we can see which one fails
+  let ps,es,vs,cs,hs,ns;
+  try{
+    ld.querySelector('p').textContent = 'Cargando proyectos...';
+    ps = await get(ref(db,'projects'));
+  } catch(e){ showErr('Error leyendo projects: '+e.message); return; }
+  try{
+    ld.querySelector('p').textContent = 'Cargando entornos...';
+    es = await get(ref(db,'envs'));
+  } catch(e){ showErr('Error leyendo envs: '+e.message); return; }
+  try{
+    ld.querySelector('p').textContent = 'Cargando versiones...';
+    vs = await get(ref(db,'versions'));
+    cs = await get(ref(db,'checklists'));
+    hs = await get(ref(db,'history'));
+    ns = await get(ref(db,'notes'));
+  } catch(e){ showErr('Error leyendo datos: '+e.message); return; }
+
+  // Populate state
+  S.projects   = o2a(ps.val());
+  S.envs       = es.val()||{};
+  S.versions   = vs.val()||{};
+  S.checklists = cs.val()||{};
+  S.history    = o2a(hs.val());
+  S.notes      = ns.val()||{};
+
+  // Seed TESIN if empty
+  if(!S.projects.length){
+    const id='proj_tesin';
+    const p={id,name:'TESIN',desc:'Sistema de Comercio Exterior',bus:ALL_BUS};
+    await set(ref(db,'projects/'+id),p);
+    S.projects=[p];
+    for(const bu of ALL_BUS){
+      const k=id+'__'+bu;
+      if(!S.envs[k]){ await set(ref(db,'envs/'+k),envTpl()); S.envs[k]=envTpl(); }
+    }
   }
 
-  // 4. Load data
-  try{
-    await startApp();
-  } catch(e){
-    setLdMsg(errBox('⚠ Error al cargar datos',
-      `<code style="background:#1d232e;padding:1px 5px;border-radius:3px;color:#60a5fa">${e.message}</code><br><br>
-       Revisá las reglas de la Realtime Database.`));
-  }
+  curProjId = S.projects[0].id;
+  curBU     = S.projects[0].bus[0];
+
+  // Subscribe to live updates
+  subscribe();
+
+  // Show app
+  ld.classList.add('hidden');
+  document.getElementById('appHeader').style.display='flex';
+  document.getElementById('appMain').style.display='block';
+  setConn('online','conectado');
+  renderAll();
 })();</script>
 </body>
 </html>
