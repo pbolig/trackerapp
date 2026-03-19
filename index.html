@@ -3,963 +3,553 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TrackerApp</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<title>TrackerApp Premium</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#080b0f;--s1:#0f1318;--s2:#161b23;--s3:#1d232e;--s4:#242c3a;
-  --b1:#222a38;--b2:#2e3a4e;--b3:#3d4f6a;
-  --txt:#eef1f8;--txt2:#b8e580;--txt3:#b7d2fb;
-  --acc:#3b82f6;--acc2:#60a5fa;--acc-dim:rgba(59,130,246,0.12);
-  --dev:#22d3a0;--dev-dim:rgba(34,211,160,0.1);
-  --tst:#f59e0b;--tst-dim:rgba(245,158,11,0.1);
-  --prd:#f43f5e;--prd-dim:rgba(244,63,94,0.1);
-  --ok:#22d3a0;--warn:#f59e0b;--err:#f43f5e;
-  --r:8px;--r2:5px;
-  --mono:'IBM Plex Mono',monospace;--display:'Bebas Neue',sans-serif;--sans:'DM Sans',sans-serif;
-  --shadow:0 4px 24px rgba(0,0,0,0.4);
+  --bg: #0b0e14;
+  --panel: #14181f;
+  --surface: #1e242e;
+  --accent: #3b82f6;
+  --accent-glow: rgba(59,130,246,0.3);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --txt: #f8fafc;
+  --txt-dim: #94a3b8;
+  --border: rgba(255, 255, 255, 0.08);
+  --radius: 12px;
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{font-size:14px}
-body{background:var(--bg);color:var(--txt);font-family:var(--mono);min-height:100vh;overflow-x:hidden}
-a{color:var(--acc2);text-decoration:none}a:hover{text-decoration:underline}
-button{cursor:pointer;font-family:var(--mono)}
-input,select,textarea{font-family:var(--mono)}
-::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
-body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--s1) 1px,transparent 1px),linear-gradient(90deg,var(--s1) 1px,transparent 1px);background-size:48px 48px;opacity:.35;pointer-events:none;z-index:0}
 
-/* ── LOADING ── */
-#appLoading{position:fixed;inset:0;z-index:800;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
-#appLoading.hidden{display:none}
-#appLoading p{font-size:.78rem;color:var(--txt3)}
-.spinner{width:30px;height:30px;border:3px solid var(--b2);border-top-color:var(--acc);border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
 
-/* ── SYNC BAR ── */
-#syncBar{position:fixed;top:56px;left:0;right:0;height:2px;background:var(--acc);z-index:300;transform:scaleX(0);transform-origin:left;transition:transform .3s;opacity:0}
-#syncBar.active{transform:scaleX(.75);opacity:1}
-#syncBar.done{transform:scaleX(1);opacity:0;transition:transform .15s,opacity .5s .1s}
+/* --- Sidebar --- */
+.sidebar {
+  width: 280px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.sidebar-header {
+  padding: 24px;
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sidebar-header span { color: var(--accent); }
 
-/* ── CONN BADGE ── */
-#connBadge{display:flex;align-items:center;gap:6px;padding:0 14px;border-left:1px solid var(--b1);height:100%;font-size:.7rem;color:var(--txt3);white-space:nowrap;flex-shrink:0}
-#connDot{width:7px;height:7px;border-radius:50%;background:var(--txt3);transition:background .3s;flex-shrink:0}
-#connDot.online{background:var(--ok)}
-#connDot.offline{background:var(--err)}
-#connDot.syncing{background:var(--warn);animation:blink .8s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.project-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+.project-item {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid transparent;
+}
+.project-item:hover { background: rgba(255,255,255,0.03); }
+.project-item.active {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.project-item .actions { opacity: 0; transition: opacity 0.2s; }
+.project-item:hover .actions { opacity: 1; }
 
-/* ── HEADER ── */
-header{position:sticky;top:0;z-index:200;height:56px;background:rgba(8,11,15,.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0}
-.hd-logo{display:flex;align-items:center;padding:0 20px;border-right:1px solid var(--b1);height:100%;flex-shrink:0}
-.hd-logo-text{font-family:var(--display);font-size:1.5rem;letter-spacing:2px;line-height:1}
-.hd-logo-text span{color:var(--acc)}
-.hd-proj{display:flex;align-items:center;padding:0 4px 0 12px;border-right:1px solid var(--b1);height:100%;position:relative;flex-shrink:0}
-.hd-proj-lbl{font-size:.67rem;color:var(--txt3);text-transform:uppercase;letter-spacing:1.5px;margin-right:8px;white-space:nowrap}
-.proj-trig{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r2);padding:5px 12px;color:var(--txt);font-size:.82rem;font-weight:600;min-width:150px;transition:border-color .15s}
-.proj-trig:hover{border-color:var(--b3)}
-.proj-trig .arr{margin-left:auto;font-size:.58rem;color:var(--txt3);transition:transform .2s}
-.proj-trig.open .arr{transform:rotate(180deg)}
-.proj-menu{position:absolute;top:calc(100% + 4px);left:12px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);min-width:260px;z-index:400;box-shadow:var(--shadow);display:none;overflow:hidden;animation:fdown .15s ease}
-.proj-menu.open{display:block}
-@keyframes fdown{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
-.pm-list{max-height:220px;overflow-y:auto}
-.pm-item{display:flex;align-items:center;gap:8px;padding:10px 14px;transition:background .1s;cursor:pointer}
-.pm-item:hover{background:var(--s3)}.pm-item.active{background:var(--acc-dim)}
-.pm-name{font-size:.82rem;font-weight:600;color:var(--txt);flex:1}
-.pm-bus{font-size:.67rem;color:var(--txt3)}
-.pm-acts{display:flex;gap:4px;opacity:0;transition:opacity .15s}
-.pm-item:hover .pm-acts{opacity:1}
-.pm-ibtn{background:transparent;border:none;color:var(--txt3);font-size:.74rem;padding:2px 5px;border-radius:3px;transition:color .15s,background .15s}
-.pm-ibtn:hover{color:var(--txt);background:var(--s4)}.pm-ibtn.del:hover{color:var(--err)}
-.pm-foot{border-top:1px solid var(--b1);padding:8px 14px}
-.pm-add{width:100%;background:transparent;border:1px dashed var(--b2);border-radius:var(--r2);color:var(--txt3);font-size:.77rem;padding:7px;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
-.pm-add:hover{border-color:var(--acc);color:var(--acc)}
-.hd-bu{display:flex;align-items:center;gap:4px;padding:0 12px;border-right:1px solid var(--b1);height:100%}
-.bu-btn{padding:4px 12px;border-radius:20px;border:1px solid transparent;background:transparent;color:var(--txt3);font-size:.74rem;font-weight:500;letter-spacing:.5px;transition:all .15s}
-.bu-btn:hover{color:var(--txt);border-color:var(--b2)}.bu-btn.active{background:var(--acc-dim);border-color:var(--acc);color:var(--acc2)}
-.hd-tabs{display:flex;align-items:center;gap:2px;padding:0 10px;height:100%;flex:1;overflow-x:auto}
-.nav-tab{padding:5px 13px;border-radius:var(--r2);border:1px solid transparent;background:transparent;color:var(--txt3);font-size:.75rem;font-weight:500;white-space:nowrap;transition:all .15s}
-.nav-tab:hover{color:var(--txt);background:var(--s2)}.nav-tab.active{background:var(--s2);border-color:var(--b2);color:var(--acc2)}
-.hd-cfg-btn{background:transparent;border:none;color:var(--txt3);font-size:.85rem;padding:0 14px;height:100%;border-left:1px solid var(--b1);transition:color .15s;flex-shrink:0}
-.hd-cfg-btn:hover{color:var(--txt)}
+.add-project-btn {
+  margin: 12px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--txt-dim);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.add-project-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ── MAIN ── */
-main{position:relative;z-index:1;padding:22px 24px;max-width:1640px;margin:0 auto}
-.view{display:none}.view.active{display:block}
-.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-.sec-title{font-family:var(--display);font-size:1.2rem;letter-spacing:2px;color:var(--txt2);display:flex;align-items:center;gap:10px}
-.sec-title::before{content:'';width:3px;height:18px;background:var(--acc);border-radius:2px;flex-shrink:0}
-.sec-title em{color:var(--acc2);font-style:normal}
-.card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden}
-.s-chip{display:inline-flex;align-items:center;gap:5px;font-size:.71rem;padding:3px 9px;border-radius:20px;font-weight:500;cursor:pointer;transition:opacity .15s}
-.s-chip::before{content:'●';font-size:.5rem}.s-chip:hover{opacity:.8}
-.sc-ok{background:rgba(34,211,160,.1);color:var(--ok)}.sc-testing{background:rgba(245,158,11,.1);color:var(--tst)}.sc-pending{background:rgba(74,86,112,.2);color:var(--txt3)}.sc-blocked{background:rgba(244,63,94,.12);color:var(--err)}
-.btn{padding:8px 18px;border-radius:var(--r2);border:none;font-size:.78rem;font-weight:500;transition:all .15s}
-.btn-p{background:var(--acc);color:#fff}.btn-p:hover{background:#2563eb}
-.btn-s{background:var(--s3);color:var(--txt2);border:1px solid var(--b2)}.btn-s:hover{color:var(--txt);border-color:var(--b3)}
-.btn-d{background:rgba(244,63,94,.1);color:var(--err);border:1px solid rgba(244,63,94,.25)}.btn-d:hover{background:rgba(244,63,94,.2)}
-.btn-g{display:flex;align-items:center;gap:6px;background:transparent;border:1px dashed var(--b2);border-radius:var(--r2);color:var(--txt3);font-size:.75rem;padding:7px 14px;transition:all .15s}
-.btn-g:hover{border-color:var(--acc);color:var(--acc)}
-.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
-.fg{display:flex;flex-direction:column;gap:5px}
-.fl{font-size:.67rem;color:var(--txt3);text-transform:uppercase;letter-spacing:1.2px}
-.fi,.fs,.ft{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r2);color:var(--txt);font-family:var(--mono);font-size:.8rem;padding:8px 11px;outline:none;transition:border-color .15s;width:100%}
-.fi:focus,.fs:focus,.ft:focus{border-color:var(--acc)}.fs option{background:var(--s2)}.ft{resize:vertical;min-height:72px}
-.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.pval{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r2);padding:6px 10px;font-size:.76rem;color:var(--txt2);cursor:pointer;transition:border-color .15s,color .15s;word-break:break-all}
-.pval:hover{border-color:var(--acc);color:var(--txt)}.pval .ico{flex-shrink:0;opacity:.35;font-size:.68rem}.pval:hover .ico{opacity:1}
-.plabel{font-size:.65rem;color:var(--txt3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
-.sumbar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
-.sumcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:14px 16px}
-.sumcard-val{font-family:var(--display);font-size:1.6rem;letter-spacing:1px;color:var(--txt)}
-.sumcard-lbl{font-size:.67rem;color:var(--txt3);text-transform:uppercase;letter-spacing:1.2px;margin-top:2px}
-.env-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:22px}
-.env-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;transition:border-color .2s}
-.env-card:hover{border-color:var(--b2)}
-.env-card-hd{padding:11px 15px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
-.env-pill{font-family:var(--display);font-size:.85rem;letter-spacing:2px;padding:3px 10px;border-radius:3px}
-.pill-dev{background:var(--dev-dim);color:var(--dev)}.pill-tst{background:var(--tst-dim);color:var(--tst)}.pill-prd{background:var(--prd-dim);color:var(--prd)}
-.ver-badge{font-size:.78rem;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--s3);color:var(--txt);cursor:pointer;transition:background .15s;border:1px solid var(--b2)}
-.ver-badge:hover{background:var(--s4)}
-.env-body{padding:14px 15px;display:flex;flex-direction:column;gap:9px}
-.xfr{display:flex;align-items:center;gap:6px}.xfr .pval{flex:1}
-.xrm{background:transparent;border:none;color:var(--txt3);font-size:.74rem;padding:2px 4px;border-radius:3px;transition:color .15s}.xrm:hover{color:var(--err)}
-.vtbl-wrap{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;margin-bottom:22px}
-.vtbl{width:100%;border-collapse:collapse;font-size:.78rem}
-.vtbl th{background:var(--s2);color:var(--txt3);font-size:.65rem;text-transform:uppercase;letter-spacing:1.2px;padding:9px 13px;text-align:left;border-bottom:1px solid var(--b1);font-weight:500}
-.vtbl td{padding:10px 13px;border-bottom:1px solid var(--b1);color:var(--txt2);vertical-align:middle}
-.vtbl tr:last-child td{border-bottom:none}.vtbl tr:hover td{background:var(--s2)}.vtbl .mono{color:var(--txt);font-weight:600}
-.lbtn{display:inline-flex;align-items:center;gap:4px;background:transparent;border:1px solid var(--b2);border-radius:3px;color:var(--acc2);font-family:var(--mono);font-size:.7rem;padding:3px 8px;transition:all .15s;text-decoration:none}
-.lbtn:hover{background:var(--acc);color:#fff;border-color:var(--acc);text-decoration:none}
-.iedit{background:transparent;border:1px solid var(--b1);border-radius:3px;color:var(--txt3);font-family:var(--mono);font-size:.7rem;padding:3px 7px;transition:all .15s}
-.iedit:hover{border-color:var(--b3);color:var(--txt)}.iedit.del:hover{color:var(--err);border-color:var(--err)}
-.cl-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
-.cl-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden}
-.cl-hd{padding:11px 15px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
-.cl-title{font-family:var(--sans);font-size:.88rem;font-weight:700;color:var(--txt)}.cl-prog{font-size:.7rem;color:var(--txt3)}
-.cl-body{padding:12px 15px;display:flex;flex-direction:column;gap:6px}
-.ci{display:flex;align-items:flex-start;gap:9px;padding:7px 9px;border-radius:var(--r2);transition:background .12s;cursor:pointer}
-.ci:hover{background:var(--s2)}
-.cibox{width:17px;height:17px;border:2px solid var(--b2);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;margin-top:1px}
-.ci.done .cibox{background:var(--ok);border-color:var(--ok)}.ci.done .cibox::after{content:'✓';font-size:.7rem;font-weight:700;color:#000}
-.ci-text{font-size:.76rem;color:var(--txt2);line-height:1.5}.ci.done .ci-text{color:var(--txt3);text-decoration:line-through}
-.log-item{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--b1)}.log-item:last-child{border-bottom:none}
-.log-ts{font-size:.68rem;color:var(--txt3);white-space:nowrap;min-width:130px;padding-top:1px}.log-msg{font-size:.76rem;color:var(--txt2)}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(5px);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
-.overlay.open{display:flex}
-.modal{background:var(--s1);border:1px solid var(--b2);border-radius:12px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;padding:26px;display:flex;flex-direction:column;gap:18px;animation:sup .18s ease}
-.modal-wide{max-width:640px}
-@keyframes sup{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
-.modal-hd{display:flex;align-items:center;justify-content:space-between}
-.modal-title{font-family:var(--display);font-size:1.1rem;letter-spacing:2px;color:var(--txt)}
-.mclose{background:transparent;border:none;color:var(--txt3);font-size:1.1rem;transition:color .15s}.mclose:hover{color:var(--txt)}
-.toast{position:fixed;bottom:22px;right:22px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);padding:11px 16px;font-size:.78rem;color:var(--txt);z-index:900;transform:translateY(70px);opacity:0;transition:all .22s;max-width:300px}
-.toast.show{transform:translateY(0);opacity:1}.toast.ok{border-left:3px solid var(--ok)}.toast.warn{border-left:3px solid var(--warn)}.toast.err{border-left:3px solid var(--err)}
-.empty{text-align:center;padding:48px 20px;color:var(--txt3);font-size:.8rem;line-height:2}.empty big{display:block;font-size:2rem;margin-bottom:8px}
-.notes-wrap{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:15px}
-.notes-wrap textarea{width:100%;background:transparent;border:none;color:var(--txt2);font-family:var(--mono);font-size:.78rem;resize:none;outline:none;line-height:1.8;min-height:72px}
-.ql-wrap{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
-@media(max-width:960px){.env-grid{grid-template-columns:1fr}.cl-grid{grid-template-columns:1fr}.sumbar{grid-template-columns:1fr 1fr}}
+/* --- Main Content --- */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.header {
+  height: 72px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.bu-tabs {
+  display: flex;
+  gap: 8px;
+  background: var(--panel);
+  padding: 4px;
+  border-radius: 10px;
+}
+.tab {
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  color: var(--txt-dim);
+}
+.tab:hover { color: var(--txt); }
+.tab.active {
+  background: var(--accent);
+  color: white;
+}
+
+.content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* --- Environment Cards --- */
+.env-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+.card {
+  background: var(--panel);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+}
+.card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.card-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.badge-dev { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+.badge-test { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+.badge-prod { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
+.card-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.field { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: 0.7rem; color: var(--txt-dim); text-transform: uppercase; font-weight: 700; }
+.input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: var(--txt);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.input:focus { outline: none; border-color: var(--accent); }
+.textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* --- Modal --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal {
+  background: var(--panel);
+  width: 450px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 32px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+.modal-header { margin-bottom: 24px; }
+.modal-title { font-size: 1.25rem; font-weight: 700; }
+.modal-footer { margin-top: 32px; display: flex; gap: 12px; justify-content: flex-end; }
+.btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
+.btn-secondary { background: var(--bg); color: var(--txt-dim); border-color: var(--border); }
+.btn-secondary:hover { border-color: var(--txt-dim); color: var(--txt); }
+
+/* --- Loading --- */
+#loading {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  transition: opacity 0.3s;
+}
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- Toast --- */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 16px 24px;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s;
+  z-index: 3000;
+  border-left: 4px solid var(--accent);
+}
+.toast.show { transform: translateY(0); opacity: 1; }
 </style>
 </head>
 <body>
 
-      <div class="setup-sub">Primera vez · Configurá la base de datos compartida — solo se hace una vez por dispositivo</div>
-    </div>
-    <div class="steps">
-      <div class="step"><div class="step-n">1</div><div class="step-t">Ir a <strong><a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a></strong> con una cuenta Google y crear un proyecto nuevo (ej: <strong>trackerapp-gdti</strong>). Podés desactivar Analytics.</div></div>
-      <div class="step"><div class="step-n">2</div><div class="step-t">Dentro del proyecto: <strong>Realtime Database → Crear base de datos</strong>. Elegir región <code>us-central1</code> e iniciar en <strong>modo de prueba</strong>.</div></div>
-      <div class="step"><div class="step-n">3</div><div class="step-t">Ir a <strong>Configuración del proyecto ⚙ → General → Tus apps → agregar app Web</strong> <code>&lt;/&gt;</code>. Copiar los valores del objeto <code>firebaseConfig</code> y pegarlos abajo.</div></div>
-      <div class="step"><div class="step-n">4</div><div class="step-t">Cada integrante del equipo ingresa estas mismas credenciales la primera vez que abre la app. Los datos son compartidos entre todos.</div></div>
-    </div>
-    <div class="sep"></div>
-    <div class="setup-sect">CREDENCIALES FIREBASE</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div class="sfg"><div class="sfl">API Key</div><input class="sfi" id="c_apiKey" placeholder="AIzaSy..."></div>
-      <div class="sfr">
-        <div class="sfg"><div class="sfl">Auth Domain</div><input class="sfi" id="c_authDomain" placeholder="proyecto.firebaseapp.com"></div>
-        <div class="sfg"><div class="sfl">Database URL</div><input class="sfi" id="c_dbURL" placeholder="https://proyecto-default-rtdb.firebaseio.com"></div>
-      </div>
-      <div class="sfr">
-        <div class="sfg"><div class="sfl">Project ID</div><input class="sfi" id="c_projectId" placeholder="mi-proyecto-12345"></div>
-        <div class="sfg"><div class="sfl">App ID</div><input class="sfi" id="c_appId" placeholder="1:123456:web:abc123"></div>
-      </div>
-    </div>
-    <div id="setupMsg" class="setup-status"></div>
-    <button class="setup-btn" id="setupBtn" onclick="doConnect()">Conectar y continuar →</button>
-    <div class="setup-note">Esta configuración se guarda solo en este navegador. Cada integrante la ingresa una sola vez.</div>
-  </div>
+<div id="loading">
+  <div class="spinner"></div>
+  <p style="color: var(--txt-dim); font-size: 0.9rem;">Sincronizando con Firebase...</p>
 </div>
 
-<!-- ═══ LOADING ═══ -->
-<div id="appLoading"><div class="spinner"></div><p>Conectando con Firebase...</p></div>
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-header">TRACKER<span>APP</span></div>
+  <div class="project-list" id="projectList">
+    <!-- Projects will be injected here -->
+  </div>
+  <div class="add-project-btn" onclick="openProjectModal()">
+    + Nuevo Proyecto
+  </div>
+</aside>
 
-<!-- ═══ SYNC BAR ═══ -->
-<div id="syncBar"></div>
+<!-- Main Area -->
+<main class="main">
+  <header class="header">
+    <div id="currentProjectTitle" style="font-weight: 700; font-size: 1.1rem; color: var(--txt-dim)">Selecciona un proyecto</div>
+    <div class="bu-tabs" id="buTabs">
+      <div class="tab active" onclick="switchBU('BSF')">BSF</div>
+      <div class="tab" onclick="switchBU('BSC')">BSC</div>
+      <div class="tab" onclick="switchBU('BERSA')">BERSA</div>
+      <div class="tab" onclick="switchBU('BSJ')">BSJ</div>
+    </div>
+  </header>
 
-<!-- ═══ HEADER ═══ -->
-<header style="display:none" id="appHeader">
-  <div class="hd-logo"><div class="hd-logo-text">TRACKER<span>APP</span></div></div>
-  <div class="hd-proj" id="projZone">
-    <span class="hd-proj-lbl">Proyecto</span>
-    <button class="proj-trig" id="projTrig" onclick="toggleProjMenu()">
-      <span id="projTrigName">—</span><span class="arr">▼</span>
-    </button>
-    <div class="proj-menu" id="projMenu">
-      <div class="pm-list" id="pmList"></div>
-      <div class="pm-foot"><button class="pm-add" onclick="openProjModal();closeProjMenu()">＋ Nuevo proyecto</button></div>
+  <div class="content">
+    <div class="env-grid" id="envGrid">
+      <!-- Environment cards (Dev, Test, Prod) will be injected here -->
     </div>
-  </div>
-  <div class="hd-bu" id="buZone"></div>
-  <div class="hd-tabs">
-    <button class="nav-tab active" data-view="envs"      onclick="switchView('envs')">Entornos</button>
-    <button class="nav-tab"        data-view="versions"  onclick="switchView('versions')">Versiones</button>
-    <button class="nav-tab"        data-view="checklist" onclick="switchView('checklist')">Pase a Prod</button>
-    <button class="nav-tab"        data-view="history"   onclick="switchView('history')">Historial</button>
-  </div>
-  <div id="connBadge"><div id="connDot"></div><span id="connLbl">conectando</span></div>
-  <!-- gear btn hidden: admin accesses via Ctrl+Shift+A -->
-</header>
-
-<!-- ═══ MAIN ═══ -->
-<main style="display:none" id="appMain">
-  <!-- ENTORNOS -->
-  <div class="view active" id="view-envs">
-    <div class="sumbar" id="sumbar"></div>
-    <div class="sec-hd"><div class="sec-title">Entornos · <em id="le-proj">—</em> · <em id="le-bu">—</em></div></div>
-    <div class="env-grid" id="envGrid"></div>
-    <div class="sec-title" style="margin-bottom:12px">Notas</div>
-    <div class="notes-wrap"><textarea id="notesTA" placeholder="Notas del equipo para este proyecto/UB..." oninput="schedNotes()"></textarea></div>
-  </div>
-  <!-- VERSIONES -->
-  <div class="view" id="view-versions">
-    <div class="sec-hd">
-      <div class="sec-title">Versiones · <em id="lv-proj">—</em> · <em id="lv-bu">—</em></div>
-      <button class="btn-g" onclick="openVerModal()">＋ Nueva versión</button>
-    </div>
-    <div class="vtbl-wrap">
-      <table class="vtbl"><thead><tr><th>Versión</th><th>Estado</th><th>Entorno</th><th>Deploy path</th><th>Ticket JIRA</th><th>Invgate</th><th>Fecha</th><th></th></tr></thead>
-      <tbody id="verTbody"></tbody></table>
-    </div>
-  </div>
-  <!-- CHECKLIST -->
-  <div class="view" id="view-checklist">
-    <div class="sec-hd">
-      <div class="sec-title">Pase a Producción · <em id="lc-proj">—</em> · <em id="lc-bu">—</em></div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span class="fl" style="margin:0">Versión:</span>
-        <select class="fs" id="clSel" style="width:auto;padding:6px 10px" onchange="onClChange()"></select>
-        <button class="btn btn-s" style="padding:6px 12px;font-size:.72rem" onclick="resetCL()">↺ Resetear</button>
-      </div>
-    </div>
-    <div class="ql-wrap" id="qlWrap"></div>
-    <div class="cl-grid">
-      <div class="cl-card"><div class="cl-hd"><span class="cl-title">📋 JIRA</span><span class="cl-prog" id="jProg">0/8</span></div><div class="cl-body" id="jBody"></div></div>
-      <div class="cl-card"><div class="cl-hd"><span class="cl-title">🎫 INVGATE</span><span class="cl-prog" id="iProg">0/5</span></div><div class="cl-body" id="iBody"></div></div>
-    </div>
-  </div>
-  <!-- HISTORIAL -->
-  <div class="view" id="view-history">
-    <div class="sec-hd">
-      <div class="sec-title">Historial · <em id="lh-proj">—</em> · <em id="lh-bu">—</em></div>
-      <button class="btn btn-d" style="font-size:.72rem;padding:6px 12px" onclick="clearHistory()">Limpiar historial</button>
-    </div>
-    <div class="card" style="padding:16px"><div id="histLog"></div></div>
   </div>
 </main>
 
-<!-- ═══ MODALS ═══ -->
-<!-- Proyecto -->
-<div class="overlay" id="projModal">
+<!-- Project Modal -->
+<div class="modal-overlay" id="projectModalOverlay">
   <div class="modal">
-    <div class="modal-hd"><span class="modal-title" id="pmTitle">NUEVO PROYECTO</span><button class="mclose" onclick="closeModal('projModal')">✕</button></div>
-    <div class="fg"><label class="fl">Nombre</label><input class="fi" id="pName" placeholder="ej: TESIN, SIGEF..."></div>
-    <div class="fg"><label class="fl">Descripción (opcional)</label><textarea class="ft" id="pDesc" placeholder="Breve descripción..."></textarea></div>
-    <div class="fg">
-      <label class="fl">Unidades de negocio</label>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px" id="pBuCBs">
-        <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer;color:var(--txt2)"><input type="checkbox" value="BSF"> BSF</label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer;color:var(--txt2)"><input type="checkbox" value="BSC"> BSC</label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer;color:var(--txt2)"><input type="checkbox" value="BSJ"> BSJ</label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer;color:var(--txt2)"><input type="checkbox" value="BERSA"> BERSA</label>
+    <div class="modal-header">
+      <h2 class="modal-title" id="modalTitle">Nuevo Proyecto</h2>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label class="label">Nombre del Sistema</label>
+        <input type="text" id="projName" class="input" placeholder="Ej: TESIN, SIGEF...">
+      </div>
+      <div style="margin-top: 16px">
+        <label class="label">Unidades de Negocio Activadas</label>
+        <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+          <label style="cursor: pointer;"><input type="checkbox" value="BSF" checked> BSF</label>
+          <label style="cursor: pointer;"><input type="checkbox" value="BSC" checked> BSC</label>
+          <label style="cursor: pointer;"><input type="checkbox" value="BERSA" checked> BERSA</label>
+          <label style="cursor: pointer;"><input type="checkbox" value="BSJ" checked> BSJ</label>
+        </div>
       </div>
     </div>
-    <div class="btn-row"><button class="btn btn-s" onclick="closeModal('projModal')">Cancelar</button><button class="btn btn-p" onclick="saveProj()">Guardar</button></div>
-  </div>
-</div>
-<!-- Edit field -->
-<div class="overlay" id="editModal">
-  <div class="modal">
-    <div class="modal-hd"><span class="modal-title" id="emTitle">EDITAR</span><button class="mclose" onclick="closeModal('editModal')">✕</button></div>
-    <div class="fg"><label class="fl" id="emLabel">Valor</label><input class="fi" id="emInput"></div>
-    <div class="btn-row"><button class="btn btn-s" onclick="closeModal('editModal')">Cancelar</button><button class="btn btn-p" onclick="saveField()">Guardar</button></div>
-  </div>
-</div>
-<!-- Extra field -->
-<div class="overlay" id="extraModal">
-  <div class="modal">
-    <div class="modal-hd"><span class="modal-title">CAMPO EXTRA</span><button class="mclose" onclick="closeModal('extraModal')">✕</button></div>
-    <div class="fg"><label class="fl">Nombre del campo</label><input class="fi" id="xKey" placeholder="ej: URL Sistema, Puerto..."></div>
-    <div class="fg"><label class="fl">Valor</label><input class="fi" id="xVal"></div>
-    <div class="btn-row"><button class="btn btn-s" onclick="closeModal('extraModal')">Cancelar</button><button class="btn btn-p" onclick="saveExtra()">Agregar</button></div>
-  </div>
-</div>
-<!-- Versión -->
-<div class="overlay" id="verModal">
-  <div class="modal modal-wide">
-    <div class="modal-hd"><span class="modal-title" id="vmTitle">NUEVA VERSIÓN</span><button class="mclose" onclick="closeModal('verModal')">✕</button></div>
-    <div class="fr">
-      <div class="fg"><label class="fl">Número de versión</label><input class="fi" id="vNum" placeholder="ej: 2.4.1"></div>
-      <div class="fg"><label class="fl">Estado</label><select class="fs" id="vSt"><option value="testing">En Testing</option><option value="ok">Funcionando / OK</option><option value="pending">En Espera</option><option value="blocked">Bloqueado</option><option value="prod">En Producción</option></select></div>
-    </div>
-    <div class="fr">
-      <div class="fg"><label class="fl">Entorno</label><select class="fs" id="vEnv"><option value="dev">Desarrollo</option><option value="test">Testing</option><option value="prod">Producción</option></select></div>
-      <div class="fg"><label class="fl">Fecha</label><input class="fi" id="vDate" type="date"></div>
-    </div>
-    <div class="fg"><label class="fl">Ruta de Deploy</label><input class="fi" id="vDeploy" placeholder="/apps/sistema/deploy/v2.4.1"></div>
-    <div class="fr">
-      <div class="fg"><label class="fl">URL Ticket JIRA</label><input class="fi" id="vJira" placeholder="https://jira.empresa.com/..."></div>
-      <div class="fg"><label class="fl">URL Ticket Invgate</label><input class="fi" id="vInvg" placeholder="https://invgate.empresa.com/..."></div>
-    </div>
-    <div class="fg"><label class="fl">Notas / Rollback</label><textarea class="ft" id="vNotes" placeholder="Qué se probó, qué funcionó, pendientes, rollback..."></textarea></div>
-    <div class="btn-row"><button class="btn btn-s" onclick="closeModal('verModal')">Cancelar</button><button class="btn btn-p" onclick="saveVer()">Guardar</button></div>
-  </div>
-</div>
-<!-- Config -->
-<div class="overlay" id="cfgModal">
-  <div class="modal">
-    <div class="modal-hd"><span class="modal-title">INFO FIREBASE · ADMIN</span><button class="mclose" onclick="closeModal('cfgModal')">✕</button></div>
-    <div style="font-size:.76rem;color:var(--txt2);line-height:1.8;background:var(--s2);border:1px solid var(--b2);border-radius:6px;padding:14px">
-      Para cambiar las credenciales de Firebase, editá la sección <code style="background:var(--s3);padding:1px 6px;border-radius:3px;color:var(--acc2)">FIREBASE_CFG</code> directamente en el archivo <code style="background:var(--s3);padding:1px 6px;border-radius:3px;color:var(--acc2)">index.html</code> y volvé a subir a GitHub.
-    </div>
-    <div class="fg"><label class="fl">API Key (actual)</label><input class="fi" id="sc_apiKey" readonly style="opacity:.6"></div>
-    <div class="fr">
-      <div class="fg"><label class="fl">Auth Domain</label><input class="fi" id="sc_authDomain" readonly style="opacity:.6"></div>
-      <div class="fg"><label class="fl">Database URL</label><input class="fi" id="sc_dbURL" readonly style="opacity:.6"></div>
-    </div>
-    <div class="fr">
-      <div class="fg"><label class="fl">Project ID</label><input class="fi" id="sc_projectId" readonly style="opacity:.6"></div>
-      <div class="fg"><label class="fl">App ID</label><input class="fi" id="sc_appId" readonly style="opacity:.6"></div>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-s" onclick="closeModal('cfgModal')">Cerrar</button>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeProjectModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProject()">Guardar</button>
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast">Operación exitosa</div>
 
-<!-- ═══ FIREBASE + APP LOGIC ═══ -->
+<!-- Firebase SDK -->
 <script type="module">
-import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, set, get, update, onValue, push, remove }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue, update, remove, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-// ─── CONSTANTS ───────────────────────────────────────
-const ALL_BUS = ['BSF','BSC','BSJ','BERSA'];
-const EN = { dev:'Desarrollo', test:'Testing', prod:'Producción' };
-const SL = { ok:'OK', testing:'En Testing', pending:'En Espera', blocked:'Bloqueado', prod:'En Producción' };
-const SC = { ok:'sc-ok', testing:'sc-testing', pending:'sc-pending', blocked:'sc-blocked', prod:'sc-ok' };
-const SCYC = ['ok','testing','pending','blocked'];
-const JI = [
-  "El Usuario referente debe estar cargado en la historia (aprobará la implementación — responsabilidad GDTI).",
-  "La Historia debe tener estado LISTO PARA IMPLEMENTAR al momento de informar el pase al comité.",
-  "La descripción debe indicar qué funcionalidad se implementará.",
-  "En los comentarios deben dejar evidencia de Testing satisfactorio.",
-  "Especificar el rollback.",
-  "Aprobación en Jira del usuario referente.",
-  "Agregar link del Invgate relacionado.",
-  "Adjuntar el PDF del Invgate una vez aprobado."
-];
-const II = [
-  "Al subir el pase, el usuario referente debe estar incluido entre los aprobadores.",
-  "Al informar el pase al comité debe estar firmado electrónicamente por el usuario.",
-  "En la descripción declarar el impacto del pase en la plataforma.",
-  "Definir fecha y hora para realizar el pase.",
-  "Generar el PDF del Invgate aprobado (se adjunta luego en el Jira)."
-];
-
-// ─── FIREBASE CONFIG ──────────────────────────────────
-// ▼▼▼ ADMINISTRADOR: completá estos valores con tu Firebase ▼▼▼
-const FIREBASE_CFG = {
-  apiKey:"AIzaSyD_cPC7-GK_CjRkGcCKyv6ozk89Yx0VPjw",
-  authDomain:"trackerapp-7331d.firebaseapp.com",
-  databaseURL:"https://trackerapp-7331d-default-rtdb.firebaseio.com",
-  projectId:"trackerapp-7331d",
-  appId:"1:19428285620:web:dd0c7b093ccd6a007bcbe1"
-};
-// ▲▲▲ Solo el administrador edita esto, los usuarios no tocan nada ▲▲▲
-
-let db=null, fbInst=null;
-
-async function tryConnect(cfg){
-  if(!cfg.databaseURL||!cfg.databaseURL.startsWith('https://')){
-    throw new Error('databaseURL inválida');
-  }
-  const c={...cfg,databaseURL:cfg.databaseURL.replace(/\/+$/, '')};
-  fbInst = initializeApp(c,'trackerapp');
-  db = getDatabase(fbInst);
-  // Just initialize - don't wait for connection confirmation
-  // Firebase will connect asynchronously and sync when ready
-}
-
-// ─── ADMIN MODAL (Ctrl+Shift+A) ───────────────────────
-window.openCfgModal = function(){
-  const c=FIREBASE_CFG;
-  q('#sc_apiKey').value=c.apiKey||''; q('#sc_authDomain').value=c.authDomain||'';
-  q('#sc_dbURL').value=c.databaseURL||''; q('#sc_projectId').value=c.projectId||'';
-  q('#sc_appId').value=c.appId||''; openModal('cfgModal');
-};
-window.saveCfgReload = function(){
-  toast('Para actualizar las credenciales, editá la sección FIREBASE_CFG en el HTML y volvé a subir el archivo.','warn');
-  closeModal('cfgModal');
-};
-window.wipeCfg = function(){ toast('Editá directamente el HTML para cambiar la configuración.','warn'); };
-
-// ─── APP STATE ────────────────────────────────────────
-let S = { projects:[], envs:{}, versions:{}, checklists:{}, history:[], notes:{} };
-let curProjId=null, curBU=null, curView='envs';
-let _ec=null, _vid=null, _xenv=null, _epid=null;
-const _clSel={};
-let _nTimer=null;
-
-const sk = ()=>`${curProjId}__${curBU}`;
-const cp = ()=>(S.projects||[]).find(p=>p.id===curProjId)||null;
-const q  = s=>document.querySelector(s);
-const qa = s=>document.querySelectorAll(s);
-
-function envTpl(){
-  return {
-    dev:  {version:'—',dbServer:'',databases:'',appServer:'',appPath:'',logPath:'',deployPath:'',status:'pending',extra:{}},
-    test: {version:'—',dbServer:'',databases:'',appServer:'',appPath:'',logPath:'',deployPath:'',status:'pending',extra:{}},
-    prod: {version:'—',dbServer:'',databases:'',appServer:'',appPath:'',logPath:'',deployPath:'',status:'pending',extra:{}}
+  const FIREBASE_CFG = {
+    apiKey: "AIzaSyD_cPC7-GK_CjRkGcCKyv6ozk89Yx0VPjw",
+    authDomain: "trackerapp-7331d.firebaseapp.com",
+    databaseURL: "https://trackerapp-7331d-default-rtdb.firebaseio.com",
+    projectId: "trackerapp-7331d",
+    appId: "1:19428285620:web:dd0c7b093ccd6a007bcbe1"
   };
-}
 
-// ─── FIREBASE PATHS ───────────────────────────────────
-const R = {
-  projects:    ()=>ref(db,'projects'),
-  proj:      id=>ref(db,'projects/'+id),
-  envs:        ()=>ref(db,'envs'),
-  env:   (p,bu)=>ref(db,'envs/'+p+'__'+bu),
-  vers:  (p,bu)=>ref(db,'versions/'+p+'__'+bu),
-  ver: (p,bu,v)=>ref(db,'versions/'+p+'__'+bu+'/'+v),
-  cl:  (p,bu,v)=>ref(db,'checklists/'+p+'__'+bu+'/'+v),
-  hist:        ()=>ref(db,'history'),
-  note:  (p,bu)=>ref(db,'notes/'+p+'__'+bu)
-};
+  // Initialize Firebase
+  const app = initializeApp(FIREBASE_CFG);
+  const db = getDatabase(app);
 
-// ─── SYNC BAR ─────────────────────────────────────────
-function syncStart(){ const b=q('#syncBar'); b.className='active'; setConn('syncing','guardando'); }
-function syncEnd()  { const b=q('#syncBar'); b.className='done'; setTimeout(()=>b.className='',700); setConn('online','conectado'); }
-function setConn(c,l){ q('#connDot').className=c; q('#connLbl').textContent=l; }
+  // App State
+  let projects = [];
+  let currentProject = null;
+  let currentBU = 'BSF';
+  let envData = {};
 
-// ─── START APP ────────────────────────────────────────
-async function startApp(){
-  const ld = document.getElementById('appLoading');
-  ld.style.display='flex'; ld.classList.remove('hidden');
-  ld.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;gap:14px;font-family:'IBM Plex Mono',monospace">
-    <div style="width:30px;height:30px;border:3px solid #222a38;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite"></div>
-    <p style="color:#6b7e9a;font-size:.78rem">Cargando datos...</p>
-    <div style="background:#0f1318;border:1px solid #222a38;border-radius:6px;padding:10px 16px;font-size:.7rem;color:#6b7e9a;max-width:380px;text-align:left">
-      <div>🔗 <span style="color:#a8b8d0">${FIREBASE_CFG.databaseURL}</span></div>
-      <div>📦 <span style="color:#a8b8d0">${FIREBASE_CFG.projectId}</span></div>
-    </div>
-  </div>`;
+  // DOM Elements
+  const projectListEl = document.getElementById('projectList');
+  const envGridEl = document.getElementById('envGrid');
+  const projectModalOverlay = document.getElementById('projectModalOverlay');
+  const toastEl = document.getElementById('toast');
+  const currentProjectTitle = document.getElementById('currentProjectTitle');
 
-  // Use onValue for initial load - fires immediately with cached data
-  // and again when online data arrives
-  let loaded = false;
+  // --- Initial Sync ---
+  onValue(ref(db, 'projects_v2'), (snapshot) => {
+    const data = snapshot.val();
+    projects = data ? Object.values(data) : [];
+    renderProjects();
+    if (!currentProject && projects.length > 0) {
+      selectProject(projects[0].id);
+    }
+    document.getElementById('loading').style.opacity = '0';
+    setTimeout(() => document.getElementById('loading').style.display = 'none', 300);
+  });
 
-  function doLoad(ps,es,vs,cs,hs,ns){
-    S.projects   = o2a(ps); S.envs=es||{}; S.versions=vs||{};
-    S.checklists = cs||{}; S.history=o2a(hs); S.notes=ns||{};
+  // --- Functions ---
+  window.renderProjects = () => {
+    projectListEl.innerHTML = projects.map(p => `
+      <div class="project-item ${currentProject?.id === p.id ? 'active' : ''}" onclick="selectProject('${p.id}')">
+        <span>${p.name}</span>
+        <div class="actions">
+          <span onclick="event.stopPropagation(); editProject('${p.id}')" style="cursor: pointer; padding: 4px;">✎</span>
+          <span onclick="event.stopPropagation(); deleteProject('${p.id}')" style="cursor: pointer; padding: 4px; color: var(--danger)">✕</span>
+        </div>
+      </div>
+    `).join('');
+  };
 
-    if(!S.projects.length){
-      const id='proj_tesin';
-      const p={id,name:'TESIN',desc:'Sistema de Comercio Exterior',bus:ALL_BUS};
-      set(ref(db,'projects/'+id),p);
-      S.projects=[p];
-      ALL_BUS.forEach(bu=>{
-        const k=id+'__'+bu;
-        if(!S.envs[k]){ set(ref(db,'envs/'+k),envTpl()); S.envs[k]=envTpl(); }
+  window.selectProject = (id) => {
+    currentProject = projects.find(p => p.id === id);
+    currentProjectTitle.textContent = currentProject.name;
+    renderProjects();
+    updateBUTabs();
+    syncEnvironments();
+  };
+
+  window.updateBUTabs = () => {
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(t => {
+      const isAvailable = currentProject.bus.includes(t.textContent);
+      t.style.display = isAvailable ? 'block' : 'none';
+      if (t.textContent === currentBU) t.classList.add('active');
+      else t.classList.remove('active');
+    });
+    // If current BU not available for this project, switch to first available
+    if (!currentProject.bus.includes(currentBU)) {
+      switchBU(currentProject.bus[0]);
+    }
+  };
+
+  window.switchBU = (bu) => {
+    currentBU = bu;
+    document.querySelectorAll('.tab').forEach(t => {
+      if (t.textContent === bu) t.classList.add('active');
+      else t.classList.remove('active');
+    });
+    syncEnvironments();
+  };
+
+  window.syncEnvironments = () => {
+    if (!currentProject) return;
+    const path = `envs_v2/${currentProject.id}/${currentBU}`;
+    onValue(ref(db, path), (snapshot) => {
+      envData = snapshot.val() || {
+        dev: { version: '', deploy: '', logs: '', server: '', script: '', notes: '' },
+        test: { version: '', deploy: '', logs: '', server: '', script: '', notes: '' },
+        prod: { version: '', deploy: '', logs: '', server: '', script: '', notes: '' }
+      };
+      renderEnvironments();
+    });
+  };
+
+  window.renderEnvironments = () => {
+    const envs = ['dev', 'test', 'prod'];
+    envGridEl.innerHTML = envs.map(env => {
+      const d = envData[env] || {};
+      return `
+        <div class="card">
+          <div class="card-header">
+            <h3>${env === 'dev' ? 'Desarrollo' : env === 'test' ? 'Testeo' : 'Producción'}</h3>
+            <span class="badge badge-${env}">${env.toUpperCase()}</span>
+          </div>
+          <div class="card-body">
+            <div class="field">
+              <label class="label">Versión</label>
+              <input type="text" class="input" value="${d.version || ''}" placeholder="v1.0.0" onchange="updateEnvField('${env}', 'version', this.value)">
+            </div>
+            <div class="field">
+              <label class="label">Servidor / Servicios</label>
+              <input type="text" class="input" value="${d.server || ''}" placeholder="AppServer-01, Redis..." onchange="updateEnvField('${env}', 'server', this.value)">
+            </div>
+            <div class="field">
+              <label class="label">Ruta Deploy</label>
+              <input type="text" class="input" value="${d.deploy || ''}" placeholder="/apps/deploy/..." onchange="updateEnvField('${env}', 'deploy', this.value)">
+            </div>
+            <div class="field">
+              <label class="label">Ruta Logs</label>
+              <input type="text" class="input" value="${d.logs || ''}" placeholder="/var/logs/..." onchange="updateEnvField('${env}', 'logs', this.value)">
+            </div>
+            <div class="field">
+              <label class="label">Maquetación / Scripts</label>
+              <textarea class="input textarea" placeholder="Scripts de despliegue o maquetación..." onchange="updateEnvField('${env}', 'script', this.value)">${d.script || ''}</textarea>
+            </div>
+            <div class="field">
+              <label class="label">Notas</label>
+              <textarea class="input textarea" placeholder="Anotaciones extra..." onchange="updateEnvField('${env}', 'notes', this.value)">${d.notes || ''}</textarea>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  window.updateEnvField = (env, field, value) => {
+    const path = `envs_v2/${currentProject.id}/${currentBU}/${env}/${field}`;
+    set(ref(db, path), value).then(() => showToast('Guardado automáticamente'));
+  };
+
+  // --- CRUD Project ---
+  let editingProjectId = null;
+  window.openProjectModal = (id = null) => {
+    editingProjectId = id;
+    const modalTitle = document.getElementById('modalTitle');
+    const nameInput = document.getElementById('projName');
+    const checkBoxes = document.querySelectorAll('#projectModalOverlay input[type="checkbox"]');
+    
+    if (id) {
+      modalTitle.textContent = "Editar Proyecto";
+      const p = projects.find(x => x.id === id);
+      nameInput.value = p.name;
+      checkBoxes.forEach(cb => cb.checked = p.bus.includes(cb.value));
+    } else {
+      modalTitle.textContent = "Nuevo Proyecto";
+      nameInput.value = "";
+      checkBoxes.forEach(cb => cb.checked = true);
+    }
+    projectModalOverlay.style.display = 'flex';
+  };
+
+  window.closeProjectModal = () => {
+    projectModalOverlay.style.display = 'none';
+  };
+
+  window.saveProject = () => {
+    const name = document.getElementById('projName').value.trim();
+    if (!name) return alert("Ingresa un nombre");
+    
+    const bus = Array.from(document.querySelectorAll('#projectModalOverlay input:checked')).map(cb => cb.value);
+    if (bus.length === 0) return alert("Selecciona al menos una Unidad de Negocio");
+
+    const id = editingProjectId || 'proj_' + Date.now();
+    const projectObj = { id, name, bus };
+
+    set(ref(db, 'projects_v2/' + id), projectObj).then(() => {
+      showToast(editingProjectId ? "Proyecto actualizado" : "Proyecto creado");
+      closeProjectModal();
+      if (!editingProjectId) selectProject(id);
+    });
+  };
+
+  window.deleteProject = (id) => {
+    if (confirm("¿Seguro que deseas eliminar este proyecto y todos sus entornos?")) {
+      remove(ref(db, 'projects_v2/' + id)).then(() => {
+        remove(ref(db, 'envs_v2/' + id));
+        showToast("Proyecto eliminado", "danger");
+        if (currentProject?.id === id) {
+          currentProject = null;
+          envGridEl.innerHTML = '';
+          currentProjectTitle.textContent = 'Selecciona un proyecto';
+        }
       });
     }
-
-    if(!loaded){
-      loaded=true;
-      curProjId=S.projects[0].id; curBU=S.projects[0].bus[0];
-      subscribe();
-      ld.classList.add('hidden');
-      document.getElementById('appHeader').style.display='flex';
-      document.getElementById('appMain').style.display='block';
-      setConn('online','conectado');
-      renderAll();
-    }
-  }
-
-  // Try with individual gets, catching each one
-  try{
-    const results = await Promise.all([
-      get(ref(db,'projects')).then(s=>s.val()).catch(()=>null),
-      get(ref(db,'envs')).then(s=>s.val()).catch(()=>{}),
-      get(ref(db,'versions')).then(s=>s.val()).catch(()=>{}),
-      get(ref(db,'checklists')).then(s=>s.val()).catch(()=>{}),
-      get(ref(db,'history')).then(s=>s.val()).catch(()=>null),
-      get(ref(db,'notes')).then(s=>s.val()).catch(()=>{})
-    ]);
-    doLoad(...results);
-  } catch(err){
-    ld.innerHTML=`<div style="text-align:center;max-width:480px;padding:24px;font-family:'IBM Plex Mono',monospace">
-      <div style="background:#161b23;border:1px solid #f43f5e;border-radius:8px;padding:20px;font-size:.78rem;color:#a8b8d0;line-height:1.9;text-align:left">
-        <strong style="color:#f43f5e">⚠ Error al cargar</strong><br><br>
-        <code style="color:#60a5fa">${err.message}</code>
-      </div></div>`;
-  }
-}
-
-function subscribe(){
-  onValue(R.projects(), sn=>{ S.projects=o2a(sn.val()); if(!cp()&&S.projects.length){curProjId=S.projects[0].id;curBU=S.projects[0].bus[0];} renderAll(); });
-  onValue(ref(db,'envs'),     sn=>{ S.envs=sn.val()||{}; renderAll(); });
-  onValue(ref(db,'versions'), sn=>{ S.versions=sn.val()||{}; renderAll(); });
-  onValue(ref(db,'checklists'),sn=>{ S.checklists=sn.val()||{}; renderCL(); });
-  onValue(R.hist(),            sn=>{ S.history=o2a(sn.val()); renderHist(); });
-  onValue(ref(db,'notes'),     sn=>{ S.notes=sn.val()||{}; });
-}
-
-function o2a(o){ if(!o) return []; return Object.values(o); }
-
-// ─── NAVIGATION ───────────────────────────────────────
-window.switchView = v=>{
-  curView=v;
-  qa('.view').forEach(el=>el.classList.remove('active'));
-  qa('.nav-tab').forEach(el=>el.classList.remove('active'));
-  q(`#view-${v}`).classList.add('active');
-  q(`.nav-tab[data-view="${v}"]`).classList.add('active');
-  renderAll();
-};
-window.selectBU = bu=>{ curBU=bu; renderAll(); };
-
-// ─── PROJECT DROPDOWN ─────────────────────────────────
-window.toggleProjMenu = ()=>{
-  const m=q('#projMenu'),t=q('#projTrig');
-  if(m.classList.contains('open')){closeProjMenu();return;}
-  renderProjMenu(); m.classList.add('open'); t.classList.add('open');
-};
-window.closeProjMenu = ()=>{ q('#projMenu').classList.remove('open'); q('#projTrig').classList.remove('open'); };
-document.addEventListener('click',e=>{ const pz=q('#projZone'); if(pz&&!pz.contains(e.target)) closeProjMenu(); });
-
-function renderProjMenu(){
-  q('#pmList').innerHTML=(S.projects||[]).map(p=>`
-    <div class="pm-item ${p.id===curProjId?'active':''}" onclick="selProj('${p.id}')">
-      <span class="pm-name">${p.name}</span>
-      <span class="pm-bus">${(p.bus||[]).join(' · ')}</span>
-      <span class="pm-acts">
-        <button class="pm-ibtn" onclick="event.stopPropagation();openProjModal('${p.id}')">✎</button>
-        <button class="pm-ibtn del" onclick="event.stopPropagation();delProj('${p.id}')">✕</button>
-      </span>
-    </div>`).join('')||'<div style="padding:12px 14px;font-size:.78rem;color:var(--txt3)">Sin proyectos</div>';
-}
-window.selProj = id=>{ curProjId=id; const p=cp(); if(p&&!p.bus.includes(curBU)) curBU=p.bus[0]; closeProjMenu(); renderAll(); };
-
-// ─── PROJECT CRUD ─────────────────────────────────────
-window.openProjModal = eid=>{
-  _epid=eid||null;
-  if(eid){ const p=S.projects.find(x=>x.id===eid); q('#pName').value=p.name; q('#pDesc').value=p.desc||''; qa('#pBuCBs input').forEach(cb=>cb.checked=(p.bus||[]).includes(cb.value)); q('#pmTitle').textContent='EDITAR PROYECTO'; }
-  else { q('#pName').value=''; q('#pDesc').value=''; qa('#pBuCBs input').forEach(cb=>cb.checked=false); q('#pmTitle').textContent='NUEVO PROYECTO'; }
-  openModal('projModal');
-};
-window.saveProj = async ()=>{
-  const name=q('#pName').value.trim(); if(!name){toast('Ingresá un nombre','warn');return;}
-  const bus=[...qa('#pBuCBs input:checked')].map(c=>c.value); if(!bus.length){toast('Seleccioná al menos una UB','warn');return;}
-  syncStart();
-  if(_epid){
-    const p=S.projects.find(x=>x.id===_epid);
-    await set(R.proj(_epid),{...p,name,desc:q('#pDesc').value,bus});
-    for(const bu of bus) if(!S.envs[`${_epid}__${bu}`]) await set(R.env(_epid,bu),envTpl());
-    addHist(_epid,curBU,`Proyecto "${name}" editado`);
-  } else {
-    const id='proj_'+Date.now(); const proj={id,name,desc:q('#pDesc').value,bus};
-    await set(R.proj(id),proj);
-    for(const bu of bus) await set(R.env(id,bu),envTpl());
-    curProjId=id; curBU=bus[0];
-    addHist(id,bus[0],`Proyecto "${name}" creado`);
-  }
-  syncEnd(); closeModal('projModal'); toast('Proyecto guardado','ok');
-};
-window.delProj = async id=>{
-  if((S.projects||[]).length<=1){toast('Debe haber al menos un proyecto','warn');return;}
-  const p=S.projects.find(x=>x.id===id);
-  if(!confirm(`¿Eliminar "${p.name}"? Se perderán todos sus datos.`)) return;
-  syncStart(); await remove(R.proj(id));
-  if(curProjId===id){ const r=S.projects.filter(x=>x.id!==id); curProjId=r[0]?.id; curBU=r[0]?.bus[0]; }
-  syncEnd(); toast('Proyecto eliminado','warn');
-};
-
-// ─── RENDER ALL ───────────────────────────────────────
-function renderAll(){
-  const p=cp(); if(!p){q('#projTrigName').textContent='— Sin proyecto —';return;}
-  q('#projTrigName').textContent=p.name;
-  // BU zone
-  q('#buZone').innerHTML=(p.bus||[]).map(bu=>`<button class="bu-btn ${bu===curBU?'active':''}" onclick="selectBU('${bu}')">${bu}</button>`).join('');
-  // labels
-  [['le','envs'],['lv','versions'],['lc','checklist'],['lh','history']].forEach(([pf])=>{
-    const ep=q(`#${pf}-proj`),eb=q(`#${pf}-bu`);
-    if(ep) ep.textContent=p.name; if(eb) eb.textContent=curBU;
-  });
-  ensLoc();
-  renderSumbar(); renderEnvs(); renderVers(); renderCL(); renderHist();
-  q('#notesTA').value=S.notes[sk()]||'';
-}
-
-function ensLoc(){
-  if(!S.envs[sk()])       S.envs[sk()]=envTpl();
-  if(!S.versions[sk()])   S.versions[sk()]={};
-  if(!S.checklists[sk()]) S.checklists[sk()]={};
-}
-
-// ─── SUMBAR ───────────────────────────────────────────
-function renderSumbar(){
-  const e=S.envs[sk()]||envTpl();
-  const bl=[e.dev.status,e.test.status,e.prod.status].filter(s=>s==='blocked').length;
-  q('#sumbar').innerHTML=`
-    <div class="sumcard"><div class="sumcard-val">${e.dev.version||'—'}</div><div class="sumcard-lbl">Dev · versión</div></div>
-    <div class="sumcard"><div class="sumcard-val">${e.test.version||'—'}</div><div class="sumcard-lbl">Test · versión</div></div>
-    <div class="sumcard"><div class="sumcard-val">${e.prod.version||'—'}</div><div class="sumcard-lbl">Prod · versión</div></div>
-    <div class="sumcard"><div class="sumcard-val" style="color:${bl>0?'var(--err)':'var(--ok)'}">${bl>0?'⚠ '+bl:'✓ OK'}</div><div class="sumcard-lbl">Estado entornos</div></div>`;
-}
-
-// ─── ENV GRID ─────────────────────────────────────────
-function renderEnvs(){
-  const e=S.envs[sk()]||envTpl();
-  q('#envGrid').innerHTML=['dev','test','prod'].map(env=>{
-    const d=e[env]||{}; const x=d.extra||{};
-    const xrows=Object.keys(x).map(k=>`
-      <div class="xfr">
-        <div style="flex:1"><div class="plabel">${k}</div>
-          <div class="pval" onclick="openEdit('${env}','extra:${k}','${k}','${esc(x[k]||'')}')"><span>${x[k]||'—'}</span><span class="ico">⎘</span></div>
-        </div>
-        <button class="xrm" onclick="delExtra('${env}','${k}')">✕</button>
-      </div>`).join('');
-    const pill=env==='dev'?'pill-dev':env==='test'?'pill-tst':'pill-prd';
-    return `<div class="env-card">
-      <div class="env-card-hd">
-        <span class="env-pill ${pill}">${EN[env].toUpperCase()}</span>
-        <span class="ver-badge" onclick="openEdit('${env}','version','Versión','${esc(d.version||'')}')">${d.version||'—'}</span>
-      </div>
-      <div class="env-body">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
-          <span class="s-chip ${SC[d.status]||'sc-pending'}" onclick="cycSt('${env}')">${SL[d.status]||'—'}</span>
-          <span style="font-size:.65rem;color:var(--txt3)">click → cambiar</span>
-        </div>
-        ${pr(env,'dbServer','Servidor DB',d.dbServer)}
-        ${pr(env,'databases','Bases de datos',d.databases)}
-        ${pr(env,'appServer','Servidor App',d.appServer)}
-        ${pr(env,'appPath','Path Aplicación',d.appPath)}
-        ${pr(env,'logPath','Path Logs',d.logPath)}
-        ${pr(env,'deployPath','Path Deploy',d.deployPath)}
-        <div>${xrows}</div>
-        <button class="btn-g" style="margin-top:4px" onclick="openExtra('${env}')">＋ Campo extra</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-const pr=(env,f,l,v)=>{const vv=v||'';return`<div><div class="plabel">${l}</div><div class="pval" onclick="openEdit('${env}','${f}','${l}','${esc(vv)}')"><span>${vv||'—'}</span><span class="ico">⎘</span></div></div>`;};
-const esc=s=>String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-
-window.openEdit = (env,f,l,v)=>{
-  _ec={env,f,l}; q('#emTitle').textContent=l.toUpperCase(); q('#emLabel').textContent=l; q('#emInput').value=v;
-  openModal('editModal'); setTimeout(()=>q('#emInput').focus(),80);
-};
-window.saveField = async ()=>{
-  if(!_ec) return; const val=q('#emInput').value.trim();
-  const k=sk(),{env,f}=_ec; const cur=S.envs[k]||envTpl();
-  const prev=f.startsWith('extra:')?(cur[env].extra||{})[f.slice(6)]||'—':cur[env][f]||'—';
-  const path=f.startsWith('extra:')?`envs/${k}/${env}/extra/${f.slice(6)}`:`envs/${k}/${env}/${f}`;
-  syncStart(); await update(ref(db),{[path]:val}); syncEnd();
-  addHist(curProjId,curBU,`[${EN[env]}] ${_ec.l}: "${prev}" → "${val}"`);
-  closeModal('editModal'); toast('Campo actualizado','ok');
-};
-window.cycSt = async env=>{
-  const k=sk(); const cur=(S.envs[k]||{})[env]?.status||'pending';
-  const next=SCYC[(SCYC.indexOf(cur)+1)%SCYC.length];
-  syncStart(); await update(ref(db),{[`envs/${k}/${env}/status`]:next}); syncEnd();
-  addHist(curProjId,curBU,`[${EN[env]}] Estado → ${SL[next]}`);
-  toast(`${EN[env]}: ${SL[next]}`,'ok');
-};
-window.openExtra = env=>{ _xenv=env; q('#xKey').value=''; q('#xVal').value=''; openModal('extraModal'); setTimeout(()=>q('#xKey').focus(),80); };
-window.saveExtra = async ()=>{
-  const k=q('#xKey').value.trim(); if(!k){toast('Ingresá el nombre','warn');return;}
-  const v=q('#xVal').value.trim(); const sk2=sk();
-  syncStart(); await update(ref(db),{[`envs/${sk2}/${_xenv}/extra/${k}`]:v}); syncEnd();
-  addHist(curProjId,curBU,`[${EN[_xenv]}] Campo extra "${k}" agregado`);
-  closeModal('extraModal'); toast('Campo agregado','ok');
-};
-window.delExtra = async (env,k)=>{
-  if(!confirm(`¿Eliminar el campo "${k}"?`)) return;
-  syncStart(); await remove(ref(db,`envs/${sk()}/${env}/extra/${k}`)); syncEnd(); toast('Campo eliminado','warn');
-};
-
-// ─── VERSIONS ─────────────────────────────────────────
-const vArr=()=>{ const r=S.versions[sk()]; if(!r) return []; return Object.values(r).sort((a,b)=>(a.ts||0)-(b.ts||0)); };
-
-function renderVers(){
-  const vs=vArr().slice().reverse(); const tb=q('#verTbody');
-  if(!vs.length){tb.innerHTML='<tr><td colspan="8" class="empty" style="padding:28px">Sin versiones registradas.</td></tr>';return;}
-  tb.innerHTML=vs.map(v=>`<tr>
-    <td class="mono">${v.num}</td>
-    <td><span class="s-chip ${SC[v.status]||'sc-pending'}">${SL[v.status]||v.status}</span></td>
-    <td style="color:${v.env==='prod'?'var(--prd)':v.env==='test'?'var(--tst)':'var(--dev)'};font-size:.74rem">${EN[v.env]||v.env}</td>
-    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem">${v.deploy||'—'}</td>
-    <td>${v.jira?`<a class="lbtn" href="${v.jira}" target="_blank">JIRA ↗</a>`:'—'}</td>
-    <td>${v.invg?`<a class="lbtn" href="${v.invg}" target="_blank">INVGATE ↗</a>`:'—'}</td>
-    <td style="font-size:.72rem;color:var(--txt3)">${v.date||'—'}</td>
-    <td style="display:flex;gap:5px">
-      <button class="iedit" onclick="openVerModal('${v.id}')">✎</button>
-      <button class="iedit del" onclick="delVer('${v.id}')">✕</button>
-    </td>
-  </tr>`).join('');
-}
-
-window.openVerModal = eid=>{
-  _vid=eid||null;
-  if(eid){
-    const v=vArr().find(x=>x.id===eid); if(v){
-      q('#vNum').value=v.num; q('#vSt').value=v.status; q('#vEnv').value=v.env;
-      q('#vDate').value=v.date||''; q('#vDeploy').value=v.deploy||'';
-      q('#vJira').value=v.jira||''; q('#vInvg').value=v.invg||''; q('#vNotes').value=v.notes||'';
-    }
-    q('#vmTitle').textContent='EDITAR VERSIÓN';
-  } else {
-    ['vNum','vDate','vDeploy','vJira','vInvg','vNotes'].forEach(id=>q('#'+id).value='');
-    q('#vSt').value='testing'; q('#vEnv').value='dev';
-    q('#vDate').value=new Date().toISOString().split('T')[0];
-    q('#vmTitle').textContent='NUEVA VERSIÓN';
-  }
-  openModal('verModal');
-};
-window.saveVer = async ()=>{
-  const num=q('#vNum').value.trim(); if(!num){toast('Ingresá el número de versión','warn');return;}
-  const k=sk(),vEnv=q('#vEnv').value;
-  syncStart();
-  if(_vid){
-    await update(ref(db),{
-      [`versions/${k}/${_vid}/num`]:num, [`versions/${k}/${_vid}/status`]:q('#vSt').value,
-      [`versions/${k}/${_vid}/env`]:vEnv, [`versions/${k}/${_vid}/date`]:q('#vDate').value,
-      [`versions/${k}/${_vid}/deploy`]:q('#vDeploy').value, [`versions/${k}/${_vid}/jira`]:q('#vJira').value,
-      [`versions/${k}/${_vid}/invg`]:q('#vInvg').value, [`versions/${k}/${_vid}/notes`]:q('#vNotes').value
-    });
-    addHist(curProjId,curBU,`Versión ${num} actualizada en ${EN[vEnv]}`);
-  } else {
-    const id='v_'+Date.now();
-    const v={id,num,status:q('#vSt').value,env:vEnv,date:q('#vDate').value,
-      deploy:q('#vDeploy').value,jira:q('#vJira').value,invg:q('#vInvg').value,notes:q('#vNotes').value,ts:Date.now()};
-    await update(ref(db),{[`versions/${k}/${id}`]:v,[`envs/${k}/${vEnv}/version`]:num});
-    addHist(curProjId,curBU,`Nueva versión ${num} registrada en ${EN[vEnv]}`);
-  }
-  syncEnd(); closeModal('verModal'); toast('Versión guardada','ok');
-};
-window.delVer = async id=>{
-  if(!confirm('¿Eliminar esta versión?')) return;
-  const v=vArr().find(x=>x.id===id);
-  syncStart(); await remove(ref(db,`versions/${sk()}/${id}`)); syncEnd();
-  if(v) addHist(curProjId,curBU,`Versión ${v.num} eliminada`);
-  toast('Versión eliminada','warn');
-};
-
-// ─── CHECKLIST ────────────────────────────────────────
-function renderCL(){
-  const vs=vArr(); const sel=q('#clSel'); if(!sel) return;
-  const prev=sel.value;
-  sel.innerHTML=vs.length?vs.map(v=>`<option value="${v.id}">${v.num} (${EN[v.env]})</option>`)
-    .join(''):'<option value="">— Sin versiones —</option>';
-  const k=sk(),saved=_clSel[k];
-  if(saved&&vs.find(v=>v.id===saved)) sel.value=saved;
-  else if(prev&&vs.find(v=>v.id===prev)) sel.value=prev;
-  else if(vs.length) sel.value=vs[vs.length-1].id;
-  _clSel[k]=sel.value;
-  loadCL(); renderQLs();
-}
-window.onClChange=()=>{ _clSel[sk()]=q('#clSel').value; loadCL(); renderQLs(); };
-
-function loadCL(){
-  const k=sk(),vId=q('#clSel').value;
-  const c=(S.checklists[k]&&S.checklists[k][vId])||{jira:[],invgate:[]};
-  rci('jBody',JI,c.jira||[],'jira'); rci('iBody',II,c.invgate||[],'invgate');
-  upProg('jProg',c.jira||[],JI.length); upProg('iProg',c.invgate||[],II.length);
-}
-function rci(cid,items,chk,type){
-  q('#'+cid).innerHTML=items.map((t,i)=>{
-    const done=chk.includes(i);
-    return `<div class="ci ${done?'done':''}" onclick="togCL('${type}',${i})">
-      <div class="cibox"></div><span class="ci-text">${i+1}. ${t}</span></div>`;
-  }).join('');
-}
-window.togCL = async (type,idx)=>{
-  const k=sk(),vId=q('#clSel').value;
-  if(!vId){toast('Seleccioná una versión','warn');return;}
-  const c=(S.checklists[k]&&S.checklists[k][vId])||{jira:[],invgate:[]};
-  const arr=[...(c[type]||[])];
-  const pos=arr.indexOf(idx); if(pos>=0) arr.splice(pos,1); else arr.push(idx);
-  const updated={...c,[type]:arr};
-  if(!S.checklists[k]) S.checklists[k]={};
-  S.checklists[k][vId]=updated; // optimistic
-  loadCL();
-  await set(R.cl(curProjId,curBU,vId),updated);
-};
-function upProg(id,chk,tot){
-  const el=q('#'+id); if(!el) return;
-  const d=chk.length; el.textContent=`${d}/${tot}`;
-  el.style.color=d===tot?'var(--ok)':d>0?'var(--tst)':'var(--txt3)';
-}
-window.resetCL = async ()=>{
-  const k=sk(),vId=q('#clSel').value;
-  if(!vId){toast('Seleccioná una versión','warn');return;}
-  if(!confirm('¿Resetear todos los checks?')) return;
-  syncStart(); await set(R.cl(curProjId,curBU,vId),{jira:[],invgate:[]}); syncEnd();
-  toast('Checklist reseteado','warn');
-};
-function renderQLs(){
-  const vId=q('#clSel').value; const v=vArr().find(x=>x.id===vId); const el=q('#qlWrap');
-  if(!el) return;
-  if(!v){el.innerHTML='<span style="font-size:.74rem;color:var(--txt3)">Cargá una versión para ver los links.</span>';return;}
-  const pts=[
-    v.jira?`<a class="lbtn" href="${v.jira}" target="_blank">📋 JIRA ↗</a>`:'',
-    v.invg?`<a class="lbtn" href="${v.invg}" target="_blank">🎫 INVGATE ↗</a>`:'',
-    v.deploy?`<span class="pval" style="display:inline-flex;font-size:.74rem" onclick="cpTxt('${v.deploy}')">📁 ${v.deploy}<span class="ico">⎘</span></span>`:''
-  ].filter(Boolean);
-  el.innerHTML=pts.join('');
-}
-
-// ─── HISTORY ──────────────────────────────────────────
-function renderHist(){
-  const el=q('#histLog'); if(!el) return;
-  const items=(S.history||[]).filter(h=>h.projId===curProjId&&h.bu===curBU).slice().reverse();
-  if(!items.length){el.innerHTML='<div class="empty"><big>📭</big>Sin cambios registrados.</div>';return;}
-  el.innerHTML=items.map(h=>`<div class="log-item"><span class="log-ts">${h.ts}</span><span class="log-msg">${h.msg}</span></div>`).join('');
-}
-async function addHist(pid,bu,msg){
-  const ts=new Date().toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'});
-  await push(R.hist(),{projId:pid,bu,ts,msg,_ts:Date.now()});
-}
-window.clearHistory = async ()=>{
-  if(!confirm('¿Limpiar el historial de este proyecto/UB?')) return;
-  syncStart();
-  const sn=await get(R.hist()); const val=sn.val()||{}; const upd={};
-  Object.entries(val).forEach(([k,h])=>{ if(h.projId===curProjId&&h.bu===curBU) upd[`history/${k}`]=null; });
-  await update(ref(db),upd); syncEnd(); toast('Historial limpiado','warn');
-};
-
-// ─── NOTES ────────────────────────────────────────────
-window.schedNotes=()=>{ clearTimeout(_nTimer); _nTimer=setTimeout(async ()=>{ await set(R.note(curProjId,curBU),q('#notesTA').value); },800); };
-
-// ─── UTILS ────────────────────────────────────────────
-window.cpTxt = t=>{ navigator.clipboard?.writeText(t).then(()=>toast('Copiado','ok')); };
-window.openModal  = id=>q('#'+id).classList.add('open');
-window.closeModal = id=>q('#'+id).classList.remove('open');
-document.addEventListener('click',e=>{ qa('.overlay.open').forEach(o=>{ if(e.target===o) o.classList.remove('open'); }); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') qa('.overlay.open').forEach(o=>o.classList.remove('open')); });
-// Admin shortcut: Ctrl+Shift+A
-document.addEventListener('keydown',e=>{ if(e.ctrlKey&&e.shiftKey&&e.key==='A'){ e.preventDefault(); openCfgModal(); } });
-let _tt;
-window.toast=(msg,type='ok')=>{ const el=q('#toast'); el.textContent=msg; el.className=`toast show ${type}`; clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),2800); };
-
-// ─── BOOT ─────────────────────────────────────────────
-(async()=>{
-  const ld = document.getElementById('appLoading');
-
-  // Check configured
-  if(FIREBASE_CFG.apiKey.startsWith('REEMPLAZAR')){
-    ld.innerHTML=`<div style="text-align:center;padding:24px;font-family:'IBM Plex Mono',monospace;max-width:460px">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:3px;color:#eef1f8;margin-bottom:12px">TRACKER<span style="color:#3b82f6">APP</span></div>
-      <div style="background:#161b23;border:1px solid #f43f5e;border-radius:8px;padding:18px;font-size:.78rem;color:#a8b8d0;line-height:1.8">
-        <strong style="color:#f43f5e">App no configurada</strong><br><br>
-        Completá la sección <code style="background:#1d232e;padding:1px 5px;border-radius:3px;color:#60a5fa">FIREBASE_CFG</code> en el HTML.
-      </div></div>`;
-    return;
-  }
-
-  // Show status
-  ld.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;gap:14px;font-family:'IBM Plex Mono',monospace">
-    <div style="width:30px;height:30px;border:3px solid #222a38;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite"></div>
-    <p style="color:#6b7e9a;font-size:.78rem">Conectando...</p>
-    <div style="background:#0f1318;border:1px solid #222a38;border-radius:6px;padding:10px 16px;font-size:.7rem;color:#6b7e9a;max-width:380px;text-align:left">
-      <div>🔗 <span style="color:#a8b8d0">${FIREBASE_CFG.databaseURL}</span></div>
-      <div>📦 <span style="color:#a8b8d0">${FIREBASE_CFG.projectId}</span></div>
-    </div>
-  </div>`;
-
-  const showErr = (msg) => {
-    ld.innerHTML=`<div style="text-align:center;padding:24px;font-family:'IBM Plex Mono',monospace;max-width:500px">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:3px;color:#eef1f8;margin-bottom:12px">TRACKER<span style="color:#3b82f6">APP</span></div>
-      <div style="background:#161b23;border:1px solid #f43f5e;border-radius:8px;padding:18px;font-size:.78rem;color:#a8b8d0;line-height:1.9;text-align:left">
-        <strong style="color:#f43f5e">⚠ Error</strong><br><br>
-        <code style="color:#60a5fa;font-size:.74rem">${msg}</code><br><br>
-        <strong style="color:#eef1f8">Checklist:</strong><br>
-        1. Firebase Console → Realtime Database → <strong>Reglas</strong> deben tener <code style="color:#22d3a0">".read":true,".write":true</code><br>
-        2. El databaseURL debe coincidir exactamente con el que aparece en Firebase Console<br>
-        3. La Realtime Database debe estar creada (no solo el proyecto)
-      </div></div>`;
   };
 
-  // Init Firebase
-  try{
-    const cfg = {...FIREBASE_CFG, databaseURL: FIREBASE_CFG.databaseURL.replace(/\/+$/,'')};
-    fbInst = initializeApp(cfg, 'trackerapp');
-    db     = getDatabase(fbInst);
-  } catch(e){ showErr('Error al inicializar Firebase: '+e.message); return; }
+  // --- UI Helpers ---
+  window.showToast = (msg, type = 'accent') => {
+    toastEl.textContent = msg;
+    toastEl.style.borderLeftColor = `var(--${type})`;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 3000);
+  };
 
-  // Load data with individual requests so we can see which one fails
-  let ps,es,vs,cs,hs,ns;
-  try{
-    ld.querySelector('p').textContent = 'Cargando proyectos...';
-    ps = await get(ref(db,'projects'));
-  } catch(e){ showErr('Error leyendo projects: '+e.message); return; }
-  try{
-    ld.querySelector('p').textContent = 'Cargando entornos...';
-    es = await get(ref(db,'envs'));
-  } catch(e){ showErr('Error leyendo envs: '+e.message); return; }
-  try{
-    ld.querySelector('p').textContent = 'Cargando versiones...';
-    vs = await get(ref(db,'versions'));
-    cs = await get(ref(db,'checklists'));
-    hs = await get(ref(db,'history'));
-    ns = await get(ref(db,'notes'));
-  } catch(e){ showErr('Error leyendo datos: '+e.message); return; }
-
-  // Populate state
-  S.projects   = o2a(ps.val());
-  S.envs       = es.val()||{};
-  S.versions   = vs.val()||{};
-  S.checklists = cs.val()||{};
-  S.history    = o2a(hs.val());
-  S.notes      = ns.val()||{};
-
-  // Seed TESIN if empty
-  if(!S.projects.length){
-    const id='proj_tesin';
-    const p={id,name:'TESIN',desc:'Sistema de Comercio Exterior',bus:ALL_BUS};
-    await set(ref(db,'projects/'+id),p);
-    S.projects=[p];
-    for(const bu of ALL_BUS){
-      const k=id+'__'+bu;
-      if(!S.envs[k]){ await set(ref(db,'envs/'+k),envTpl()); S.envs[k]=envTpl(); }
-    }
-  }
-
-  curProjId = S.projects[0].id;
-  curBU     = S.projects[0].bus[0];
-
-  // Subscribe to live updates
-  subscribe();
-
-  // Show app
-  ld.classList.add('hidden');
-  document.getElementById('appHeader').style.display='flex';
-  document.getElementById('appMain').style.display='block';
-  setConn('online','conectado');
-  renderAll();
-})();</script>
+</script>
 </body>
 </html>
