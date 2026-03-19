@@ -393,17 +393,29 @@ const FIREBASE_CFG = {
 let db=null, fbInst=null;
 
 async function tryConnect(cfg){
-  if(fbInst){ try{ fbInst.delete(); }catch{} }
-  if(!cfg.databaseURL||!cfg.databaseURL.startsWith('https://')){
-    throw new Error('databaseURL inválida. Debe comenzar con https://');
+  if(!cfg.databaseURL || !cfg.databaseURL.startsWith('https://')){
+    throw new Error('databaseURL inválida — debe empezar con https://');
   }
-  const cleanCfg={...cfg, databaseURL:cfg.databaseURL.replace(/\/+$/, '')};
-  fbInst = initializeApp(cleanCfg, 'ta_'+Date.now());
-  db = getDatabase(fbInst);
-  // Simple connect — no timeout race, let Firebase handle it
-  const snap = await get(ref(db,'_ping'));
-  // snap.val() will be null if node doesn't exist, that's fine — connection works
-  return true;
+  const c = {...cfg, databaseURL: cfg.databaseURL.replace(/\/+$/, '')};
+  fbInst = initializeApp(c, 'trackerapp');
+  db     = getDatabase(fbInst);
+  // Wait for confirmed connection via .info/connected
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(
+      'Timeout de conexión (10s). Verificá que el databaseURL sea correcto y que las reglas permitan lectura.'
+    )), 10000);
+    const connRef = ref(db, '.info/connected');
+    const unsub = onValue(connRef, (snap) => {
+      if(snap.val() === true){
+        clearTimeout(timeout);
+        unsub();
+        resolve();
+      }
+    }, (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
+  });
 }
 
 // ─── ADMIN MODAL (Ctrl+Shift+A) ───────────────────────
@@ -442,14 +454,14 @@ function envTpl(){
 // ─── FIREBASE PATHS ───────────────────────────────────
 const R = {
   projects:    ()=>ref(db,'projects'),
-  proj:      id=>ref(db,`projects/${id}`),
+  proj:      id=>ref(db,'projects/'+id),
   envs:        ()=>ref(db,'envs'),
-  env:   (p,bu)=>ref(db,`envs/${p}__${bu}`),
-  vers:  (p,bu)=>ref(db,`versions/${p}__${bu}`),
-  ver: (p,bu,v)=>ref(db,`versions/${p}__${bu}/${v}`),
-  cl:  (p,bu,v)=>ref(db,`checklists/${p}__${bu}/${v}`),
+  env:   (p,bu)=>ref(db,'envs/'+p+'__'+bu),
+  vers:  (p,bu)=>ref(db,'versions/'+p+'__'+bu),
+  ver: (p,bu,v)=>ref(db,'versions/'+p+'__'+bu+'/'+v),
+  cl:  (p,bu,v)=>ref(db,'checklists/'+p+'__'+bu+'/'+v),
   hist:        ()=>ref(db,'history'),
-  note:  (p,bu)=>ref(db,`notes/${p}__${bu}`)
+  note:  (p,bu)=>ref(db,'notes/'+p+'__'+bu)
 };
 
 // ─── SYNC BAR ─────────────────────────────────────────
@@ -459,48 +471,57 @@ function setConn(c,l){ q('#connDot').className=c; q('#connLbl').textContent=l; }
 
 // ─── START APP ────────────────────────────────────────
 async function startApp(){
-  const loadEl = q('#appLoading');
-  const loadP  = q('#appLoading p');
-  loadEl.style.display='flex'; loadEl.classList.remove('hidden');
-  if(loadP) loadP.textContent='Cargando datos...';
-  let ps,es,vs,cs,hs,ns;
-  try{
-    [ps,es,vs,cs,hs,ns] = await Promise.all([
-      get(R.projects()), get(ref(db,'envs')), get(ref(db,'versions')),
-      get(ref(db,'checklists')), get(R.hist()), get(ref(db,'notes'))
-    ]);
-  } catch(err){
-    loadEl.innerHTML=`
-      <div style="text-align:center;max-width:420px;padding:24px">
-        <div style="font-family:var(--display);font-size:1.8rem;letter-spacing:3px;margin-bottom:16px">TRACKER<span style="color:var(--acc)">APP</span></div>
-        <div style="background:var(--s2);border:1px solid var(--err);border-radius:8px;padding:20px;font-size:.8rem;color:var(--txt2);line-height:1.8">
-          <strong style="color:var(--err)">Error al cargar datos</strong><br><br>
-          ${err.message}<br><br>
-          <span style="color:var(--txt3)">Verificá las reglas de la Realtime Database en Firebase Console.<br>
-          Deben tener <code style="background:var(--s3);padding:1px 4px;border-radius:3px">.read: true</code></span>
-        </div>
-      </div>`;
-    return;
-  }
-  S.projects   = o2a(ps.val());
-  S.envs       = es.val()||{};
-  S.versions   = vs.val()||{};
-  S.checklists = cs.val()||{};
-  S.history    = o2a(hs.val());
-  S.notes      = ns.val()||{};
+  // Show loading
+  const ld = document.getElementById('appLoading');
+  ld.style.display = 'flex';
+  ld.classList.remove('hidden');
+  ld.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;font-family:'IBM Plex Mono',monospace">
+      <div style="width:30px;height:30px;border:3px solid #222a38;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite"></div>
+      <p style="color:#6b7e9a;font-size:.78rem">Cargando datos...</p>
+    </div>`;
 
+  // Load all data
+  const ps = await get(ref(db, 'projects'));
+  const es = await get(ref(db, 'envs'));
+  const vs = await get(ref(db, 'versions'));
+  const cs = await get(ref(db, 'checklists'));
+  const hs = await get(ref(db, 'history'));
+  const ns = await get(ref(db, 'notes'));
+
+  S.projects   = o2a(ps.val());
+  S.envs       = es.val() || {};
+  S.versions   = vs.val() || {};
+  S.checklists = cs.val() || {};
+  S.history    = o2a(hs.val());
+  S.notes      = ns.val() || {};
+
+  // Seed TESIN if no projects exist
   if(!S.projects.length){
-    const id='proj_tesin';
-    const p={id,name:'TESIN',desc:'Sistema de Comercio Exterior',bus:ALL_BUS};
-    await set(R.proj(id),p);
-    S.projects=[p];
-    for(const bu of ALL_BUS){ if(!S.envs[`${id}__${bu}`]) await set(R.env(id,bu),envTpl()); }
+    const id  = 'proj_tesin';
+    const p   = {id, name:'TESIN', desc:'Sistema de Comercio Exterior', bus: ALL_BUS};
+    await set(ref(db, 'projects/' + id), p);
+    S.projects = [p];
+    for(const bu of ALL_BUS){
+      const k = id + '__' + bu;
+      if(!S.envs[k]){
+        await set(ref(db, 'envs/' + k), envTpl());
+        S.envs[k] = envTpl();
+      }
+    }
   }
-  curProjId=S.projects[0].id; curBU=S.projects[0].bus[0];
+
+  curProjId = S.projects[0].id;
+  curBU     = S.projects[0].bus[0];
+
+  // Subscribe to live updates
   subscribe();
-  q('#appLoading').classList.add('hidden');
-  q('#appHeader').style.display='flex'; q('#appMain').style.display='block';
-  setConn('online','conectado');
+
+  // Show app
+  ld.classList.add('hidden');
+  document.getElementById('appHeader').style.display = 'flex';
+  document.getElementById('appMain').style.display   = 'block';
+  setConn('online', 'conectado');
   renderAll();
 }
 
