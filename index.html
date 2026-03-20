@@ -145,6 +145,15 @@ body {
 
 /* Utils */
 .flex-center { display: flex; align-items: center; justify-content: center; }
+  div::-webkit-scrollbar { width: 8px; height: 8px; }
+  div::-webkit-scrollbar-track { background: var(--bg); }
+  div::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.4); border-radius: 10px; border: 2px solid var(--bg); }
+  div::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+.sv-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 12px; }
+.sv-tab { padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; cursor: pointer; color: var(--txt-dim); font-weight: 700; border: 1px solid transparent; white-space: nowrap; }
+.sv-tab.active { background: var(--panel); border-color: var(--accent); color: var(--accent); }
+
 .icon-only { font-weight: 900; }
 .spinner {
   width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent);
@@ -166,6 +175,9 @@ body {
   </div>
   <div class="project-list" id="projectList"></div>
   <div class="add-btn" onclick="openProjModal()">+ Nuevo Proyecto</div>
+  <div style="margin-top: auto; padding: 12px; font-size: 0.6rem; color: var(--txt-dim); opacity: 0.5; border-top: 1px solid var(--border); text-align: center;">
+    v.20260320123306
+  </div>
 </aside>
 
 <main class="main">
@@ -223,6 +235,7 @@ const db = getDatabase(app);
 let projects = {};
 let curProjId = null;
 let curBuId = null;
+let activeSvs = {}; // { eid: sid }
 
 // DOM
 const listEl = document.getElementById('projectList');
@@ -286,18 +299,38 @@ function renderGrid() {
     return;
   }
 
-  envGridEl.innerHTML = Object.entries(envs).map(([eid, e]) => `
-    <div class="env-col">
-      <div class="env-header">
-        <h3>${e.name}</h3>
-        <button class="btn-sm btn-ghost" onclick="addSvPrompt('${eid}')">+ SUBVERSION</button>
+  envGridEl.innerHTML = Object.entries(envs).map(([eid, e]) => {
+    const sverses = Object.entries(e.subversions || {});
+    if (sverses.length > 0 && !activeSvs[eid]) activeSvs[eid] = sverses[0][0];
+    
+    return `
+      <div class="env-col">
+        <div class="env-header">
+          <h3 style="flex:1">${e.name}</h3>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-sm btn-ghost" onclick="addSvPrompt('${eid}')">+ SUBVERSION</button>
+            <button class="btn-sm btn-danger" onclick="deleteEnv('${eid}')" style="background:transparent; padding:4px;">✕</button>
+          </div>
+        </div>
+        ${sverses.length > 0 ? `
+          <div class="sv-tabs">
+            ${sverses.map(([sid, s]) => `
+              <div class="sv-tab ${activeSvs[eid] === sid ? 'active' : ''}" onclick="selectSv('${eid}', '${sid}')">${s.name}</div>
+            `).join('')}
+          </div>
+        ` : ''}
+        <div class="sv-list">
+          ${activeSvs[eid] && e.subversions[activeSvs[eid]] ? renderSvCard(eid, activeSvs[eid], e.subversions[activeSvs[eid]]) : ''}
+        </div>
       </div>
-      <div class="sv-list" style="display: flex; flex-direction: column; gap: 16px;">
-        ${Object.entries(e.subversions || {}).map(([sid, s]) => renderSvCard(eid, sid, s)).join('')}
-      </div>
-    </div>
-  `).join('') + `<div class="env-col" style="width: auto;"><button class="add-btn" onclick="addEnvPrompt()">+ Entorno</button></div>`;
+    `;
+  }).join('') + `<div class="env-col" style="width: auto;"><button class="add-btn" onclick="addEnvPrompt()">+ Entorno</button></div>`;
 }
+
+window.selectSv = (eid, sid) => {
+  activeSvs[eid] = sid;
+  renderGrid();
+};
 
 function renderSvCard(eid, sid, s) {
   return `
@@ -480,6 +513,7 @@ function showModal(title, bodyHtml, onSave) {
 }
 window.closeModal = () => document.getElementById('entityModal').style.display = 'none';
 
+window.deleteEnv = (eid) => { if(confirm("¿Eliminar entorno completo?")) remove(ref(db, `projects_v3/${curProjId}/bus/${curBuId}/envs/${eid}`)); };
 window.deleteProj = (id) => { if(confirm("¿Eliminar proyecto?")) remove(ref(db, `projects_v3/${id}`)); };
 window.deleteSv = (eid, sid) => { if(confirm("¿Eliminar subversion?")) remove(ref(db, `projects_v3/${curProjId}/bus/${curBuId}/envs/${eid}/subversions/${sid}`)); };
 window.deleteField = (eid, sid, fid) => { if(confirm("¿Eliminar campo?")) remove(ref(db, `projects_v3/${curProjId}/bus/${curBuId}/envs/${eid}/subversions/${sid}/fields/${fid}`)); };
