@@ -114,6 +114,8 @@ body {
   border-radius: 10px; color: var(--txt); font-family: var(--font-sans); font-size: 0.85rem;
   width: 100%; transition: all 0.2s;
 }
+select.input { cursor: pointer; background: var(--surface); }
+select.input option { background: var(--surface); color: var(--txt); padding: 8px; }
 .input:focus { outline: none; border-color: var(--accent); background: rgba(59, 130, 246, 0.05); }
 .textarea { min-height: 80px; resize: vertical; line-height: 1.5; font-family: inherit; }
 
@@ -176,7 +178,7 @@ body {
   <div class="project-list" id="projectList"></div>
   <div class="add-btn" onclick="openProjModal()">+ Nuevo Proyecto</div>
   <div style="margin-top: auto; padding: 12px; font-size: 0.6rem; color: var(--txt-dim); opacity: 0.5; border-top: 1px solid var(--border); text-align: center;">
-    v.20260320123306
+    v.20260320125846
   </div>
 </aside>
 
@@ -283,7 +285,7 @@ function renderTabs() {
   const bus = projects[curProjId].bus || {};
   buTabsEl.innerHTML = Object.entries(bus).map(([id, bu]) => `
     <div class="tab ${curBuId === id ? 'active' : ''}" onclick="selectBu('${id}')">${bu.name}</div>
-  `).join('') + `<div class="tab tab-add" onclick="addBuPrompt()">+ BU</div>`;
+  `).join('') + `<div class="tab tab-add" onclick="addBuPrompt()" style="font-weight: 800; border: 1px dashed var(--accent);">+ UN</div>`;
 }
 
 window.selectBu = (id) => { curBuId = id; renderTabs(); renderGrid(); };
