@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TrackerApp Premium</title>
 <!-- Google Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #0b0e14;
@@ -31,7 +31,7 @@ body {
   background: var(--bg);
   color: var(--txt);
   font-family: var(--font-sans);
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   overflow: hidden;
 }
@@ -46,6 +46,7 @@ body {
   flex-shrink: 0;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  z-index: 100;
 }
 .sidebar.collapsed { width: var(--sidebar-w-collapsed); }
 
@@ -53,7 +54,7 @@ body {
   height: 72px;
   padding: 0 24px;
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   letter-spacing: -0.5px;
   display: flex;
   align-items: center;
@@ -128,8 +129,8 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100vh;
   overflow: hidden;
-  background: var(--bg);
 }
 .header {
   height: 72px;
@@ -139,20 +140,36 @@ body {
   align-items: center;
   justify-content: space-between;
   background: var(--panel);
+  flex-shrink: 0;
 }
+.header-left { display: flex; align-items: center; gap: 16px; }
+
+.version-summary {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: var(--txt-dim);
+  display: flex;
+  gap: 12px;
+}
+.v-label { color: var(--accent); font-weight: 700; text-transform: uppercase; font-size: 0.7rem; margin-right: 4px; }
+.v-val { color: var(--txt); font-weight: 500; }
+
 .bu-tabs {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   background: var(--bg);
   padding: 4px;
-  border-radius: 10px;
+  border-radius: 12px;
 }
 .tab {
-  padding: 8px 16px;
-  border-radius: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  font-weight: 700;
   transition: all 0.2s;
   color: var(--txt-dim);
 }
@@ -167,178 +184,117 @@ body {
   padding: 24px;
   overflow-y: auto;
   scroll-behavior: smooth;
+  height: calc(100vh - 72px);
 }
 
 /* --- Environment Cards --- */
 .env-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
   gap: 24px;
-  padding-bottom: 40px;
+  padding-bottom: 120px; /* Extra space to avoid cropping */
 }
 .card {
   background: var(--panel);
   border-radius: var(--radius);
   border: 1px solid var(--border);
   box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.2s, border-color 0.2s;
+  display: flex; flex-direction: column;
 }
-.card:hover { border-color: rgba(59, 130, 246, 0.3); }
-
 .card-header {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: flex; justify-content: space-between; align-items: center;
 }
-.card-header h3 {
-  font-size: 0.95rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-.badge {
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-}
-.badge-dev { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2); }
-.badge-test { background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.2); }
-.badge-prod { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+.card-header h3 { font-size: 0.95rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
 
-.card-body {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.card-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+.version-group {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+  background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border);
 }
-.field { display: flex; flex-direction: column; gap: 6px; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
 .label { font-size: 0.65rem; color: var(--txt-dim); text-transform: uppercase; font-weight: 800; letter-spacing: 0.8px; }
 .input {
   background: var(--bg);
   border: 1px solid var(--border);
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: 8px;
   color: var(--txt);
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   transition: all 0.2s;
   width: 100%;
 }
 .input:focus { outline: none; border-color: var(--accent); background: rgba(59, 130, 246, 0.05); }
 .textarea {
-  min-height: 120px;
+  min-height: 100px;
   resize: vertical;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 /* --- Modal --- */
 .modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.8);
-  backdrop-filter: blur(8px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+  display: none; align-items: center; justify-content: center; z-index: 1000;
 }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
 .modal {
-  background: var(--panel);
-  width: 90%;
-  max-width: 480px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  padding: 32px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  transform: scale(1);
-  transition: transform 0.2s ease;
+  background: var(--panel); width: 450px; border-radius: 16px; border: 1px solid var(--border);
+  padding: 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
 }
-.modal-header { margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+.modal-header { margin-bottom: 24px; }
 .modal-title { font-size: 1.5rem; font-weight: 800; }
 .modal-footer { margin-top: 32px; display: flex; gap: 12px; justify-content: flex-end; }
 .btn {
-  padding: 12px 24px;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid transparent;
-  font-size: 0.9rem;
+  padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
 }
 .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
-.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px var(--accent-glow); }
 .btn-secondary { background: var(--surface); color: var(--txt-dim); border-color: var(--border); }
-.btn-secondary:hover { border-color: var(--txt-dim); color: var(--txt); }
 
 /* --- Toast --- */
 .toast {
-  position: fixed;
-  bottom: 32px;
-  right: 32px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 16px 28px;
-  border-radius: 12px;
-  box-shadow: 0 15px 40px rgba(0,0,0,0.4);
-  transform: translateY(120px);
-  opacity: 0;
-  transition: all 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-  z-index: 3000;
-  border-left: 5px solid var(--accent);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 600;
+  position: fixed; bottom: 32px; right: 32px; background: var(--surface); border: 1px solid var(--border);
+  padding: 14px 24px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  transform: translateY(120px); opacity: 0; transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  z-index: 3000; border-left: 4px solid var(--accent); font-weight: 600; font-size: 0.9rem;
 }
 .toast.show { transform: translateY(0); opacity: 1; }
 
-.icon-only { display: none; font-weight: 700; font-size: 1.1rem; }
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .sidebar { position: absolute; z-index: 500; height: 100vh; transform: translateX(-100%); width: 280px !important; }
-  .sidebar.open { transform: translateX(0); }
-}
+.icon-only { display: none; font-weight: 800; }
 </style>
 </head>
 <body>
 
 <div id="loading" style="background: var(--bg); position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-  <div class="spinner"></div>
-  <p style="color: var(--txt-dim); font-size: 0.9rem;">Cargando TrackerApp...</p>
+  <div class="spinner" style="width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+  <p style="color: var(--txt-dim); font-size: 0.9rem; margin-top: 20px">Iniciando TrackerApp...</p>
 </div>
 
-<!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <span>TRACKER<span class="logo-symbol">APP</span></span>
-    <span class="logo-symbol icon-only">T</span>
+    <span class="logo-symbol icon-only" style="font-size: 1.5rem">T</span>
     <button class="sidebar-toggle" onclick="toggleSidebar()">
-      <svg id="toggleIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      <svg id="toggleIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
     </button>
   </div>
-  <div class="project-list" id="projectList">
-    <!-- Projects will be injected here -->
-  </div>
-  <div class="add-project-btn" onclick="openProjectModal()" title="Nuevo Proyecto">
+  <div class="project-list" id="projectList"></div>
+  <div class="add-project-btn" onclick="openProjectModal()">
     <span>+ Nuevo Proyecto</span>
     <span class="icon-only">+</span>
   </div>
 </aside>
 
-<!-- Main Area -->
 <main class="main">
   <header class="header">
-    <div id="currentProjectTitle" style="font-weight: 800; font-size: 1.2rem; background: linear-gradient(90deg, var(--txt), var(--txt-dim)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Selecciona un proyecto</div>
+    <div class="header-left">
+      <div id="currentProjectTitle" style="font-weight: 800; font-size: 1.25rem;">Selecciona un proyecto</div>
+      <div class="version-summary" id="vSummary" style="display: none;">
+        <span><span class="v-label">DEV:</span> <span class="v-val" id="sumOfi">-</span> | <span class="v-val" id="sumApi">-</span> | <span class="v-val" id="sumWeb">-</span></span>
+      </div>
+    </div>
     <div class="bu-tabs" id="buTabs">
       <div class="tab" onclick="switchBU('BSF')">BSF</div>
       <div class="tab" onclick="switchBU('BSC')">BSC</div>
@@ -348,46 +304,40 @@ body {
   </header>
 
   <div class="content" id="mainContent">
-    <div class="env-grid" id="envGrid">
-      <!-- Environment cards (Dev, Test, Prod) will be injected here -->
-    </div>
+    <div class="env-grid" id="envGrid"></div>
   </div>
 </main>
 
-<!-- Project Modal -->
 <div class="modal-overlay" id="projectModalOverlay">
   <div class="modal">
-    <div class="modal-header">
-      <h2 class="modal-title" id="modalTitle">Nuevo Proyecto</h2>
-    </div>
+    <div class="modal-header"><h2 class="modal-title" id="modalTitle">Nuevo Proyecto</h2></div>
     <div class="modal-body">
       <div class="field">
         <label class="label">Nombre del Sistema</label>
         <input type="text" id="projName" class="input" placeholder="Ej: TESIN, SIGEF...">
       </div>
       <div style="margin-top: 24px">
-        <label class="label">Unidades de Negocio Activadas</label>
-        <div style="display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap;">
-          <label style="cursor: pointer; display: flex; gap: 6px; align-items: center; background: var(--surface); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.85rem;"><input type="checkbox" value="BSF" checked> BSF</label>
-          <label style="cursor: pointer; display: flex; gap: 6px; align-items: center; background: var(--surface); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.85rem;"><input type="checkbox" value="BSC" checked> BSC</label>
-          <label style="cursor: pointer; display: flex; gap: 6px; align-items: center; background: var(--surface); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.85rem;"><input type="checkbox" value="BERSA" checked> BERSA</label>
-          <label style="cursor: pointer; display: flex; gap: 6px; align-items: center; background: var(--surface); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.85rem;"><input type="checkbox" value="BSJ" checked> BSJ</label>
+        <label class="label">U. de Negocio Activadas</label>
+        <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+          <label style="cursor: pointer; background: var(--surface); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem;"><input type="checkbox" value="BSF" checked> BSF</label>
+          <label style="cursor: pointer; background: var(--surface); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem;"><input type="checkbox" value="BSC" checked> BSC</label>
+          <label style="cursor: pointer; background: var(--surface); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem;"><input type="checkbox" value="BERSA" checked> BERSA</label>
+          <label style="cursor: pointer; background: var(--surface); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem;"><input type="checkbox" value="BSJ" checked> BSJ</label>
         </div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeProjectModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveProject()">Guardar proyecto</button>
+      <button class="btn btn-primary" onclick="saveProject()">Guardar</button>
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast">Operación exitosa</div>
+<div class="toast" id="toast"></div>
 
-<!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getDatabase, ref, set, get, onValue, update, remove, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  import { getDatabase, ref, set, get, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
   const FIREBASE_CFG = {
     apiKey: "AIzaSyD_cPC7-GK_CjRkGcCKyv6ozk89Yx0VPjw",
@@ -397,43 +347,33 @@ body {
     appId: "1:19428285620:web:dd0c7b093ccd6a007bcbe1"
   };
 
-  // Initialize Firebase (v2 schema)
   const app = initializeApp(FIREBASE_CFG);
   const db = getDatabase(app);
 
-  // App State
   let projects = [];
   let currentProject = null;
   let currentBU = localStorage.getItem('last_bu') || 'BSF';
   let envData = {};
 
-  // DOM Elements
   const projectListEl = document.getElementById('projectList');
   const envGridEl = document.getElementById('envGrid');
   const projectModalOverlay = document.getElementById('projectModalOverlay');
   const toastEl = document.getElementById('toast');
   const currentProjectTitle = document.getElementById('currentProjectTitle');
   const sidebar = document.getElementById('sidebar');
+  const vSummary = document.getElementById('vSummary');
 
-  // --- Initial Sync ---
   onValue(ref(db, 'projects_v2'), (snapshot) => {
     const data = snapshot.val();
     projects = data ? Object.values(data) : [];
     renderProjects();
-    
-    // Auto-select last project or first available
     const lastId = localStorage.getItem('last_proj_id');
-    if (lastId && projects.find(p => p.id === lastId)) {
-      selectProject(lastId);
-    } else if (!currentProject && projects.length > 0) {
-      selectProject(projects[0].id);
-    }
-
+    if (lastId && projects.find(p => p.id === lastId)) selectProject(lastId);
+    else if (!currentProject && projects.length > 0) selectProject(projects[0].id);
     document.getElementById('loading').style.opacity = '0';
     setTimeout(() => document.getElementById('loading').style.display = 'none', 300);
   });
 
-  // Load Sidebar State
   if (localStorage.getItem('sidebar_collapsed') === 'true') {
     sidebar.classList.add('collapsed');
     document.getElementById('toggleIcon').innerHTML = '<polyline points="9 18 15 12 9 6"></polyline>';
@@ -443,11 +383,9 @@ body {
     const isCollapsed = sidebar.classList.toggle('collapsed');
     localStorage.setItem('sidebar_collapsed', isCollapsed);
     document.getElementById('toggleIcon').innerHTML = isCollapsed 
-      ? '<polyline points="9 18 15 12 9 6"></polyline>'
-      : '<polyline points="15 18 9 12 15 6"></polyline>';
+      ? '<polyline points="9 18 15 12 9 6"></polyline>' : '<polyline points="15 18 9 12 15 6"></polyline>';
   };
 
-  // --- Functions ---
   window.renderProjects = () => {
     projectListEl.innerHTML = projects.map(p => `
       <div class="project-item ${currentProject?.id === p.id ? 'active' : ''}" onclick="selectProject('${p.id}')">
@@ -472,109 +410,91 @@ body {
   };
 
   window.updateBUTabs = () => {
-    const tabs = document.querySelectorAll('.tab');
-    tabs.forEach(t => {
+    document.querySelectorAll('.tab').forEach(t => {
       const isAvailable = currentProject.bus.includes(t.textContent);
       t.style.display = isAvailable ? 'block' : 'none';
       if (t.textContent === currentBU) t.classList.add('active');
       else t.classList.remove('active');
     });
-    // If current BU not available for this project, switch to first available
-    if (!currentProject.bus.includes(currentBU)) {
-      switchBU(currentProject.bus[0]);
-    }
+    if (!currentProject.bus.includes(currentBU)) switchBU(currentProject.bus[0]);
   };
 
   window.switchBU = (bu) => {
     currentBU = bu;
     localStorage.setItem('last_bu', bu);
     document.querySelectorAll('.tab').forEach(t => {
-      if (t.textContent === bu) t.classList.add('active');
-      else t.classList.remove('active');
+      if (t.textContent === bu) t.classList.add('active'); else t.classList.remove('active');
     });
     syncEnvironments();
   };
 
   window.syncEnvironments = () => {
     if (!currentProject) return;
-    const path = `envs_v2/${currentProject.id}/${currentBU}`;
-    
-    // Use onValue for real-time updates of the selected project+BU
-    onValue(ref(db, path), (snapshot) => {
+    onValue(ref(db, `envs_v2/${currentProject.id}/${currentBU}`), (snapshot) => {
       const data = snapshot.val() || {};
       envData = {
-        dev:  { version: '', deploy: '', logs: '', server: '', script: '', notes: '', ...data.dev },
-        test: { version: '', deploy: '', logs: '', server: '', script: '', notes: '', ...data.test },
-        prod: { version: '', deploy: '', logs: '', server: '', script: '', notes: '', ...data.prod }
+        dev:  { v_office: '', v_api: '', v_web: '', deploy: '', logs: '', server: '', script: '', notes: '', ...data.dev },
+        test: { v_office: '', v_api: '', v_web: '', deploy: '', logs: '', server: '', script: '', notes: '', ...data.test },
+        prod: { v_office: '', v_api: '', v_web: '', deploy: '', logs: '', server: '', script: '', notes: '', ...data.prod }
       };
       renderEnvironments();
+      updateHeaderSummary();
     });
+  };
+
+  window.updateHeaderSummary = () => {
+    const dev = envData.dev || {};
+    document.getElementById('sumOfi').textContent = dev.v_office || '-';
+    document.getElementById('sumApi').textContent = dev.v_api || '-';
+    document.getElementById('sumWeb').textContent = dev.v_web || '-';
+    vSummary.style.display = 'block';
   };
 
   window.renderEnvironments = () => {
     const envs = ['dev', 'test', 'prod'];
     envGridEl.innerHTML = envs.map(env => {
       const d = envData[env] || {};
-      const title = env === 'dev' ? 'Desarrollo' : env === 'test' ? 'Testeo' : 'Producción';
+      const t = env === 'dev' ? 'Desarrollo' : env === 'test' ? 'Testeo' : 'Producción';
       return `
         <div class="card">
-          <div class="card-header">
-            <h3>${title}</h3>
-            <span class="badge badge-${env}">${env.toUpperCase()}</span>
-          </div>
+          <div class="card-header"><h3>${t}</h3><span class="badge badge-${env}" style="padding: 4px 10px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; background: rgba(0,0,0,0.2); border: 1px solid var(--border);">${env.toUpperCase()}</span></div>
           <div class="card-body">
-            <div class="field">
-              <label class="label">Versión de la App</label>
-              <input type="text" class="input" value="${d.version || ''}" placeholder="Ej: 2.4.1" onchange="updateEnvField('${env}', 'version', this.value)">
+            <div class="field"><label class="label">Sub-Versiones (Oficina | API | Web)</label>
+              <div class="version-group">
+                <input type="text" class="input" value="${d.v_office || ''}" placeholder="Oficina" onchange="updateEnvField('${env}', 'v_office', this.value)">
+                <input type="text" class="input" value="${d.v_api || ''}" placeholder="API" onchange="updateEnvField('${env}', 'v_api', this.value)">
+                <input type="text" class="input" value="${d.v_web || ''}" placeholder="Web" onchange="updateEnvField('${env}', 'v_web', this.value)">
+              </div>
             </div>
-            <div class="field">
-              <label class="label">Servidor / Servicios</label>
-              <input type="text" class="input" value="${d.server || ''}" placeholder="Ej: AppSrv-01, Redis, Nginx..." onchange="updateEnvField('${env}', 'server', this.value)">
-            </div>
-            <div class="field">
-              <label class="label">Ruta de Paquete (Deploy)</label>
-              <input type="text" class="input" value="${d.deploy || ''}" placeholder="/apps/tracker/deploy/..." onchange="updateEnvField('${env}', 'deploy', this.value)">
-            </div>
-            <div class="field">
-              <label class="label">Ruta de Logs</label>
-              <input type="text" class="input" value="${d.logs || ''}" placeholder="/var/logs/tracker/..." onchange="updateEnvField('${env}', 'logs', this.value)">
-            </div>
-            <div class="field">
-              <label class="label">Maquetación / Scripts</label>
-              <textarea class="input textarea" placeholder="Scripts de despliegue o maquetación..." onchange="updateEnvField('${env}', 'script', this.value)">${d.script || ''}</textarea>
-            </div>
-            <div class="field">
-              <label class="label">Notas Extra</label>
-              <textarea class="input textarea" placeholder="Anotaciones extra para el equipo..." onchange="updateEnvField('${env}', 'notes', this.value)">${d.notes || ''}</textarea>
-            </div>
+            <div class="field"><label class="label">Servidor / Servicios</label><input type="text" class="input" value="${d.server || ''}" placeholder="AppSrv-01, Redis..." onchange="updateEnvField('${env}', 'server', this.value)"></div>
+            <div class="field"><label class="label">Ruta de Paquete (Deploy)</label><input type="text" class="input" value="${d.deploy || ''}" placeholder="/apps/deploy/..." onchange="updateEnvField('${env}', 'deploy', this.value)"></div>
+            <div class="field"><label class="label">Ruta de Logs</label><input type="text" class="input" value="${d.logs || ''}" placeholder="/var/logs/..." onchange="updateEnvField('${env}', 'logs', this.value)"></div>
+            <div class="field"><label class="label">Maquetación / Scripts</label><textarea class="input textarea" onchange="updateEnvField('${env}', 'script', this.value)">${d.script || ''}</textarea></div>
+            <div class="field"><label class="label">Notas Extra</label><textarea class="input textarea" onchange="updateEnvField('${env}', 'notes', this.value)">${d.notes || ''}</textarea></div>
           </div>
         </div>
       `;
     }).join('');
-    // Scroll content to top on project switch
-    document.getElementById('mainContent').scrollTop = 0;
   };
 
-  window.updateEnvField = (env, field, value) => {
-    const path = `envs_v2/${currentProject.id}/${currentBU}/${env}/${field}`;
-    set(ref(db, path), value).then(() => showToast('Cambios guardados'));
+  window.updateEnvField = (env, f, v) => {
+    set(ref(db, `envs_v2/${currentProject.id}/${currentBU}/${env}/${f}`), v).then(() => {
+      showToast('Guardado');
+      updateHeaderSummary();
+    });
   };
 
-  // --- CRUD Project ---
-  let editingProjectId = null;
   window.openProjectModal = (id = null) => {
     editingProjectId = id;
-    const modalTitle = document.getElementById('modalTitle');
     const nameInput = document.getElementById('projName');
     const checkBoxes = document.querySelectorAll('#projectModalOverlay input[type="checkbox"]');
-    
     if (id) {
-      modalTitle.textContent = "Editar Proyecto";
+      document.getElementById('modalTitle').textContent = "Editar Proyecto";
       const p = projects.find(x => x.id === id);
       nameInput.value = p.name;
       checkBoxes.forEach(cb => cb.checked = p.bus.includes(cb.value));
     } else {
-      modalTitle.textContent = "Nuevo Proyecto";
+      document.getElementById('modalTitle').textContent = "Nuevo Proyecto";
       nameInput.value = "";
       checkBoxes.forEach(cb => cb.checked = true);
     }
@@ -582,52 +502,35 @@ body {
     nameInput.focus();
   };
 
-  window.closeProjectModal = () => {
-    projectModalOverlay.style.display = 'none';
-  };
-
+  window.closeProjectModal = () => projectModalOverlay.style.display = 'none';
   window.editProject = (id) => openProjectModal(id);
-
   window.saveProject = () => {
     const name = document.getElementById('projName').value.trim();
-    if (!name) return showToast("Ingresa un nombre", "danger");
-    
+    if (!name) return;
     const bus = Array.from(document.querySelectorAll('#projectModalOverlay input:checked')).map(cb => cb.value);
-    if (bus.length === 0) return showToast("Selecciona al menos una Unidad de Negocio", "danger");
-
     const id = editingProjectId || 'proj_' + Date.now();
-    const projectObj = { id, name, bus };
-
-    set(ref(db, 'projects_v2/' + id), projectObj).then(() => {
-      showToast(editingProjectId ? "Proyecto actualizado" : "Proyecto creado");
-      closeProjectModal();
-      if (!editingProjectId) selectProject(id);
+    set(ref(db, 'projects_v2/' + id), { id, name, bus }).then(() => {
+      showToast('Proyecto guardado'); closeProjectModal(); if (!editingProjectId) selectProject(id);
     });
   };
 
   window.deleteProject = (id) => {
-    if (confirm("¿Seguro que deseas eliminar el proyecto " + projects.find(p=>p.id===id).name + "?")) {
+    if (confirm("¿Eliminar proyecto?")) {
       remove(ref(db, 'projects_v2/' + id)).then(() => {
         remove(ref(db, 'envs_v2/' + id));
-        showToast("Proyecto eliminado", "danger");
+        showToast('Eliminado', 'danger');
         if (currentProject?.id === id) {
-          currentProject = null;
-          envGridEl.innerHTML = '';
-          currentProjectTitle.textContent = 'Selecciona un proyecto';
-          localStorage.removeItem('last_proj_id');
+          currentProject = null; envGridEl.innerHTML = ''; currentProjectTitle.textContent = 'Selecciona'; vSummary.style.display = 'none';
         }
       });
     }
   };
 
-  // --- UI Helpers ---
   window.showToast = (msg, type = 'accent') => {
-    toastEl.textContent = msg;
-    toastEl.style.borderLeftColor = `var(--${type})`;
-    toastEl.classList.add('show');
-    setTimeout(() => toastEl.classList.remove('show'), 3000);
+    toastEl.textContent = msg; toastEl.style.borderLeftColor = `var(--${type})`; toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 2000);
   };
-
 </script>
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 </body>
 </html>
