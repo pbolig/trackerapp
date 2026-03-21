@@ -86,14 +86,16 @@ body {
 .env-col { width: 400px; display: flex; flex-direction: column; gap: 20px; }
 .env-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 8px; border-left: 3px solid var(--accent);
+  padding: 12px 16px; border-left: 4px solid var(--accent);
+  background: rgba(255,255,255,0.02); border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid var(--border);
 }
-.env-header h3 { font-size: 1.1rem; font-weight: 800; text-transform: uppercase; color: var(--txt-dim); }
+.env-header h3 { font-size: 1rem; font-weight: 800; text-transform: uppercase; color: var(--txt); }
 
 /* Subversion Card */
 .sv-card {
-  background: var(--panel); border-radius: var(--radius); border: 1px solid var(--border);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3); overflow: hidden;
+  background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4); overflow: hidden;
 }
 .sv-header {
   padding: 16px 20px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);
@@ -178,14 +180,17 @@ select.input option { background: var(--surface); color: var(--txt); padding: 8p
   <div class="project-list" id="projectList"></div>
   <div class="add-btn" onclick="openProjModal()">+ Nuevo Proyecto</div>
   <div style="margin-top: auto; padding: 12px; font-size: 0.6rem; color: var(--txt-dim); opacity: 0.5; border-top: 1px solid var(--border); text-align: center;">
-    v.20260320202316
+    v.20260320211115
   </div>
 </aside>
 
 <main class="main">
   <header class="header">
     <div id="pathSummary" style="font-weight: 800; font-size: 1.1rem; color: var(--txt-dim)">Selecciona un proyecto</div>
-    <div class="bu-tabs" id="buTabs"></div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <div class="bu-tabs" id="buTabs"></div>
+      <button class="tab tab-add" onclick="addEnvPrompt()" style="font-weight: 800; border: 1px dashed var(--accent);">+ Entorno</button>
+    </div>
   </header>
   <div class="content">
     <div class="env-row" id="envGrid"></div>
@@ -285,7 +290,7 @@ function renderTabs() {
   const bus = projects[curProjId].bus || {};
   buTabsEl.innerHTML = Object.entries(bus).map(([id, bu]) => `
     <div class="tab ${curBuId === id ? 'active' : ''}" onclick="selectBu('${id}')">${bu.name}</div>
-  `).join('') + `<div class="tab tab-add" onclick="addBuPrompt()" style="font-weight: 800; border: 1px dashed var(--accent);">+ UN</div>`;
+  `).join('') + `<div class="tab tab-add" onclick="addBuPrompt()" style="font-weight: 800; border: 1px dashed var(--accent);">+ Unidad Negocio</div>`;
 }
 
 window.selectBu = (id) => { curBuId = id; renderTabs(); renderGrid(); };
@@ -305,9 +310,14 @@ function renderGrid() {
     const sverses = Object.entries(e.subversions || {});
     if (sverses.length > 0 && !activeSvs[eid]) activeSvs[eid] = sverses[0][0];
     
+    // Dynamic Accent Colors
+    let accentColor = '#3b82f6';
+    if (e.name.toLowerCase().includes('test')) accentColor = '#f59e0b';
+    if (e.name.toLowerCase().includes('prod')) accentColor = '#10b981';
+
     return `
       <div class="env-col">
-        <div class="env-header">
+        <div class="env-header" style="border-left-color: ${accentColor}; background: ${accentColor}08">
           <h3 style="flex:1">${e.name}</h3>
           <div style="display:flex; gap:8px;">
             <button class="btn-sm btn-ghost" onclick="addSvPrompt('${eid}')">+ SUBVERSION</button>
@@ -326,7 +336,7 @@ function renderGrid() {
         </div>
       </div>
     `;
-  }).join('') + `<div class="env-col" style="width: auto;"><button class="add-btn" onclick="addEnvPrompt()">+ Entorno</button></div>`;
+  }).join('');
 }
 
 window.selectSv = (eid, sid) => {
