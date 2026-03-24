@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TrackerApp Ultimate</title>
+<!-- SortableJS -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <!-- Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -154,9 +156,35 @@ select.input option { background: var(--surface); color: var(--txt); padding: 8p
   div::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.4); border-radius: 10px; border: 2px solid var(--bg); }
   div::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-.sv-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 12px; }
-.sv-tab { padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; cursor: pointer; color: var(--txt-dim); font-weight: 700; border: 1px solid transparent; white-space: nowrap; }
 .sv-tab.active { background: var(--panel); border-color: var(--accent); color: var(--accent); }
+
+/* Advanced UI Enhancements */
+.field-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.field-flags { display: flex; gap: 8px; font-size: 0.65rem; color: var(--txt-dim); }
+.field-flags label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.field-flags input { accent-color: var(--accent); width: 12px; height: 12px; cursor: pointer; }
+.drag-handle { cursor: grab; padding: 4px; color: var(--txt-dim); opacity: 0.5; margin-right: 4px; font-size: 1.1rem; }
+.field.sortable-ghost { opacity: 0.1; background: var(--accent); }
+
+/* Responsive */
+@media (max-width: 800px) {
+  .sidebar {
+    width: 0; padding: 0; position: fixed; z-index: 1000; height: 100vh;
+    transition: width 0.3s ease, padding 0.3s ease; border: none; overflow: hidden;
+  }
+  .sidebar.open { width: 280px; padding: 24px; border-right: 1px solid var(--border); }
+  .header { padding-left: 60px; }
+  .env-row { flex-direction: column; min-width: unset; padding-bottom: 24px; }
+  .env-col { width: 100%; min-width: unset; }
+  #menuBtn { display: flex; }
+}
+
+#menuBtn {
+  display: none; position: fixed; top: 18px; left: 16px; z-index: 1100;
+  width: 40px; height: 40px; border-radius: 10px; background: var(--panel);
+  border: 1px solid var(--border); align-items: center; justify-content: center;
+  cursor: pointer; color: var(--txt);
+}
 
 .icon-only { font-weight: 900; }
 .spinner {
@@ -180,9 +208,11 @@ select.input option { background: var(--surface); color: var(--txt); padding: 8p
   <div class="project-list" id="projectList"></div>
   <div class="add-btn" onclick="openProjModal()">+ Nuevo Proyecto</div>
   <div style="margin-top: auto; padding: 12px; font-size: 0.6rem; color: var(--txt-dim); opacity: 0.5; border-top: 1px solid var(--border); text-align: center;">
-    v.20260320211115
+    v.20260324201448
   </div>
 </aside>
+
+<div id="menuBtn" onclick="toggleSidebar()">☰</div>
 
 <main class="main">
   <header class="header">
@@ -331,12 +361,43 @@ function renderGrid() {
             `).join('')}
           </div>
         ` : ''}
-        <div class="sv-list">
-          ${activeSvs[eid] && e.subversions[activeSvs[eid]] ? renderSvCard(eid, activeSvs[eid], e.subversions[activeSvs[eid]]) : ''}
+        <div class="sv-list" id="sv-list-${eid}-${sid}">
+          ${Object.entries(e.subversions[activeSvs[eid]].fields || {})
+            .sort((a,b) => (a[1].order || 0) - (b[1].order || 0))
+            .map(([fid, f]) => renderField(eid, activeSvs[eid], fid, f)).join('')}
+        </div>
+        <div style="padding: 12px; display:flex; gap:8px;">
+          <button class="add-btn" style="margin: 0; padding: 8px; flex:1" onclick="addFieldPrompt('${eid}', '${activeSvs[eid]}')">+ Campo</button>
+          <button class="btn-sm btn-ghost" onclick="promotePrompt('${eid}', '${activeSvs[eid]}')">PROMOCIONAR</button>
         </div>
       </div>
     `;
   }).join('');
+
+  // Re-init sortables
+  Object.keys(envs).forEach(eid => {
+    const sid = activeSvs[eid];
+    if (sid) initSortable(eid, sid);
+  });
+}
+
+function initSortable(eid, sid) {
+  const el = document.getElementById(`sv-list-${eid}-${sid}`);
+  if (!el) return;
+  new Sortable(el, {
+    handle: '.drag-handle',
+    animation: 200,
+    ghostClass: 'sortable-ghost',
+    onEnd: (evt) => {
+      const items = Array.from(el.children);
+      const updates = {};
+      items.forEach((item, index) => {
+        const fid = item.getAttribute('data-fid');
+        updates[`projects_v3/${curProjId}/bus/${curBuId}/envs/${eid}/subversions/${sid}/fields/${fid}/order`] = index;
+      });
+      update(ref(db), updates);
+    }
+  });
 }
 
 window.selectSv = (eid, sid) => {
@@ -363,16 +424,26 @@ function renderSvCard(eid, sid, s) {
 }
 
 function renderField(eid, sid, fid, f) {
+  const isP = f.promote !== false;
+  const isE = f.email !== false;
+  
   let control = `<input type="text" class="input" value="${f.val || ''}" onchange="updateF('${eid}','${sid}','${fid}', this.value)">`;
   if (f.type === 'textarea') control = `<textarea class="input textarea" onchange="updateF('${eid}','${sid}','${fid}', this.value)">${f.val || ''}</textarea>`;
   if (f.type === 'date') control = `<input type="date" class="input" value="${f.val || ''}" onchange="updateF('${eid}','${sid}','${fid}', this.value)">`;
   if (f.type === 'link') control = `<div style="display:flex;gap:4px;"><input type="text" class="input" value="${f.val || ''}" onchange="updateF('${eid}','${sid}','${fid}', this.value)"> <a href="${f.val}" target="_blank" class="btn-ghost btn-sm flex-center">↗</a></div>`;
 
   return `
-    <div class="field">
-      <span class="label">${f.label}</span>
-      <div class="field-actions">
-        <span onclick="deleteField('${eid}','${sid}','${fid}')" style="cursor:pointer; color:var(--danger); font-size:0.7rem;">✕</span>
+    <div class="field" data-fid="${fid}">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2px;">
+        <div style="display:flex; align-items:center;">
+          <span class="drag-handle" title="Arrastrar para reordenar">⠿</span>
+          <span class="label">${f.label}</span>
+        </div>
+        <div class="field-flags">
+          <label title="Promocionar este campo"><input type="checkbox" ${isP?'checked':''} onchange="updateFlag('${eid}','${sid}','${fid}','promote',this.checked)"> Pase</label>
+          <label title="Incluir en mail de solicitud"><input type="checkbox" ${isE?'checked':''} onchange="updateFlag('${eid}','${sid}','${fid}','email',this.checked)"> Mail</label>
+          <span onclick="deleteField('${eid}','${sid}','${fid}')" style="cursor:pointer; color:var(--danger); font-size:0.7rem; margin-left:8px;">✕</span>
+        </div>
       </div>
       ${control}
     </div>
@@ -383,6 +454,10 @@ function renderField(eid, sid, fid, f) {
 window.updateF = (eid, sid, fid, val) => {
   set(ref(db, `projects_v3/${curProjId}/bus/${curBuId}/envs/${eid}/subversions/${sid}/fields/${fid}/val`), val);
   showToast("Guardado");
+};
+
+window.updateFlag = (eid, sid, fid, prop, val) => {
+  set(ref(db, `projects_v3/${curProjId}/bus/${curBuId}/envs/${eid}/subversions/${sid}/fields/${fid}/${prop}`), val);
 };
 
 // --- Prompts ---
@@ -469,17 +544,37 @@ window.promotePrompt = (eid, sid) => {
 };
 
 function promoteVersion(sourceEid, sid, targetEid) {
-  const sourceSv = projects[curProjId].bus[curBuId].envs[sourceEid].subversions[sid];
+  const sourceSv = JSON.parse(JSON.stringify(projects[curProjId].bus[curBuId].envs[sourceEid].subversions[sid]));
   const targetEnvs = projects[curProjId].bus[curBuId].envs[targetEid];
   
   // Backup for rollback
   lastSnapshot = JSON.parse(JSON.stringify(targetEnvs.subversions || {}));
 
-  // Logic: find or create subversion in target
+  // Find or create subversion in target
   let targetSid = Object.keys(targetEnvs.subversions || {}).find(k => targetEnvs.subversions[k].name === sourceSv.name);
   if (!targetSid) targetSid = 'sv_' + Date.now();
 
+  const currentTargetSv = targetEnvs.subversions ? targetEnvs.subversions[targetSid] : null;
+  const mergedFields = currentTargetSv ? { ...currentTargetSv.fields } : {};
+
+  // Merge selectively
+  Object.entries(sourceSv.fields || {}).forEach(([fid, f]) => {
+    if (f.promote !== false) {
+      mergedFields[fid] = f;
+    }
+  });
+  sourceSv.fields = mergedFields;
+
   set(ref(db, `projects_v3/${curProjId}/bus/${curBuId}/envs/${targetEid}/subversions/${targetSid}`), sourceSv).then(() => {
+    // History log
+    const histId = 'hist_' + Date.now();
+    set(ref(db, `projects_v3/${curProjId}/bus/${curBuId}/history/${histId}`), {
+      date: new Date().toISOString(),
+      source: projects[curProjId].bus[curBuId].envs[sourceEid].name,
+      target: targetEnvs.name,
+      svName: sourceSv.name
+    });
+    
     generateEmail(sourceEid, sid, targetEid);
     showToast(`Promocionado a ${targetEnvs.name}`);
   });
@@ -501,7 +596,9 @@ function generateEmail(sEid, sid, tEid) {
   text += `DESTINO: ${tEnv.name.toUpperCase()}\n\n`;
   text += `DETALLES:\n`;
   Object.values(sv.fields).forEach(f => {
-    text += `- ${f.label}: ${f.val}\n`;
+    if (f.email !== false) {
+      text += `- ${f.label}: ${f.val}\n`;
+    }
   });
   text += `\nSolicito aplicar este pase a la brevedad.\nGracias.`;
 
@@ -536,8 +633,12 @@ window.showToast = (msg, type = 'accent') => {
 };
 
 window.toggleSidebar = () => {
-  sidebar.classList.toggle('collapsed');
-  localStorage.setItem('sidebar_collapsed', sidebar.classList.contains('collapsed'));
+  const sb = document.getElementById('sidebar');
+  sb.classList.toggle('collapsed');
+  localStorage.setItem('sidebar_collapsed', sb.classList.contains('collapsed'));
+};
+window.toggleMobileSidebar = () => {
+  document.getElementById('sidebar').classList.toggle('open');
 };
 </script>
 </body>
