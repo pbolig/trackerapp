@@ -98,6 +98,19 @@ body {
 .sv-card {
   background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);
   box-shadow: 0 10px 40px rgba(0,0,0,0.4); overflow: hidden;
+  transition: transform 0.2s;
+}
+.sv-card:hover { border-color: rgba(255,255,255,0.1); }
+
+/* Environment Glows - Refined */
+.env-dev { border-top: 4px solid var(--accent) !important; box-shadow: 0 0 30px rgba(59,130,246,0.15); }
+.env-test { border-top: 4px solid var(--warning) !important; box-shadow: 0 0 30px rgba(245,158,11,0.15); }
+.env-prod { border-top: 4px solid var(--success) !important; box-shadow: 0 0 30px rgba(16,185,129,0.15); }
+.sv-card {
+  background: rgba(23, 28, 36, 0.7); backdrop-filter: blur(12px);
+  border-radius: var(--radius); border: 1px solid var(--border);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4); overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .sv-header {
   padding: 16px 20px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);
@@ -209,7 +222,7 @@ select.input option { background: var(--surface); color: var(--txt); padding: 8p
   <div class="project-list" id="projectList"></div>
   <div class="add-btn" onclick="openProjModal()">+ Nuevo Proyecto</div>
   <div style="margin-top: auto; padding: 12px; font-size: 0.6rem; color: var(--txt-dim); opacity: 0.5; border-top: 1px solid var(--border); text-align: center;">
-    v.20260324201448
+    v.202603250830
   </div>
 </aside>
 
@@ -343,16 +356,18 @@ function renderGrid() {
     const sverses = Object.entries(e.subversions || {});
     if (sverses.length > 0 && !activeSvs[eid]) activeSvs[eid] = sverses[0][0];
     
-    // Dynamic Accent Colors
+    // Dynamic Accent Colors & Classes
     let accentColor = '#3b82f6';
-    if (e.name.toLowerCase().includes('test')) accentColor = '#f59e0b';
-    if (e.name.toLowerCase().includes('prod')) accentColor = '#10b981';
+    let envClass = 'env-dev';
+    const lowerName = e.name.toLowerCase();
+    if (lowerName.includes('test')) { accentColor = '#f59e0b'; envClass = 'env-test'; }
+    if (lowerName.includes('prod')) { accentColor = '#10b981'; envClass = 'env-prod'; }
 
     const curSvId = activeSvs[eid];
     const curSv = (e.subversions && curSvId) ? e.subversions[curSvId] : null;
 
     return `
-      <div class="env-col">
+      <div class="env-col ${envClass}">
         <div class="env-header" style="border-left-color: ${accentColor}; background: ${accentColor}08">
           <h3 style="flex:1">${e.name}</h3>
           <div style="display:flex; gap:8px;">
@@ -574,13 +589,19 @@ function promoteVersion(sourceEid, sid, targetEid) {
   sourceSv.fields = mergedFields;
 
   set(ref(db, `projects_v3/${curProjId}/bus/${curBuId}/envs/${targetEid}/subversions/${targetSid}`), sourceSv).then(() => {
-    // History log
+    // History log with snapshot for rollback
     const histId = 'hist_' + Date.now();
+    const snapshot = currentTargetSv ? (currentTargetSv.fields || null) : null;
+    
     set(ref(db, `projects_v3/${curProjId}/bus/${curBuId}/history/${histId}`), {
+      id: histId,
       date: new Date().toISOString(),
       source: projects[curProjId].bus[curBuId].envs[sourceEid].name,
       target: targetEnvs.name,
-      svName: sourceSv.name
+      targetEid,
+      targetSid,
+      svName: sourceSv.name,
+      snapshot
     });
     
     generateEmail(sourceEid, sid, targetEid);
@@ -601,11 +622,29 @@ window.showHistory = () => {
             <span style="font-size:0.6rem; color:var(--txt-dim)">${new Date(h.date).toLocaleString()}</span>
           </div>
           <div style="font-size:0.7rem;">De <b style="color:white">${h.source}</b> a <b style="color:white">${h.target}</b></div>
+          ${h.snapshot ? `
+            <div style="margin-top:10px; display:flex; justify-content:flex-end;">
+              <button class="btn-sm btn-accent" style="font-size:0.6rem; background:rgba(59,130,246,0.1); color:var(--accent); border:1px solid var(--accent);" onclick="rollback('${h.id}')">REVERTIR</button>
+            </div>
+          ` : ''}
         </div>
       `).join('')}
     </div>
   `;
   showModal("Historial de Promociones", html, closeModal, "Cerrar");
+};
+
+window.rollback = (histId) => {
+  const h = projects[curProjId].bus[curBuId].history[histId];
+  if (!h || !h.snapshot) return alert("No hay datos para revertir.");
+  
+  if (confirm(`¿Revertir "${h.svName}" en ${h.target} al estado previo a esta promoción?`)) {
+    const path = `projects_v3/${curProjId}/bus/${curBuId}/envs/${h.targetEid}/subversions/${h.targetSid}/fields`;
+    set(ref(db, path), h.snapshot).then(() => {
+      showToast("Reversión exitosa");
+      closeModal();
+    });
+  }
 };
 
 function generateEmail(sEid, sid, tEid) {
