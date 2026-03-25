@@ -292,8 +292,8 @@ onValue(ref(db, 'projects_v3'), (snap) => {
 function renderSidebar() {
   listEl.innerHTML = Object.entries(projects).map(([id, p]) => `
     <div class="project-item ${curProjId === id ? 'active' : ''}" onclick="selectProj('${id}')">
-      <span class="icon-only">${p.name.charAt(0)}</span>
-      <span>${p.name}</span>
+      <span class="icon-only">${((p && p.name) || '?').charAt(0)}</span>
+      <span>${(p && p.name) || 'Sin nombre'}</span>
       <div class="actions">
         <span onclick="event.stopPropagation(); deleteProj('${id}')" style="color: var(--danger)">✕</span>
       </div>
@@ -312,14 +312,17 @@ function refreshUI() {
   renderSidebar();
   renderTabs();
   renderGrid();
-  pathEl.textContent = curProjId ? `${projects[curProjId].name}` : 'Selecciona un proyecto';
+  pathEl.innerHTML = curProjId ? `
+    <span>${projects[curProjId].name}</span>
+    <button class="btn-sm btn-ghost" style="margin-left:12px; font-size:0.6rem" onclick="showHistory()">HISTORIAL</button>
+  ` : 'Selecciona un proyecto';
 }
 
 function renderTabs() {
   if (!curProjId) return buTabsEl.innerHTML = '';
   const bus = projects[curProjId].bus || {};
   buTabsEl.innerHTML = Object.entries(bus).map(([id, bu]) => `
-    <div class="tab ${curBuId === id ? 'active' : ''}" onclick="selectBu('${id}')">${bu.name}</div>
+    <div class="tab ${curBuId === id ? 'active' : ''}" onclick="selectBu('${id}')">${bu.name || 'Sin nombre'}</div>
   `).join('') + `<div class="tab tab-add" onclick="addBuPrompt()" style="font-weight: 800; border: 1px dashed var(--accent);">+ Unidad Negocio</div>`;
 }
 
@@ -345,6 +348,9 @@ function renderGrid() {
     if (e.name.toLowerCase().includes('test')) accentColor = '#f59e0b';
     if (e.name.toLowerCase().includes('prod')) accentColor = '#10b981';
 
+    const curSvId = activeSvs[eid];
+    const curSv = (e.subversions && curSvId) ? e.subversions[curSvId] : null;
+
     return `
       <div class="env-col">
         <div class="env-header" style="border-left-color: ${accentColor}; background: ${accentColor}08">
@@ -357,19 +363,21 @@ function renderGrid() {
         ${sverses.length > 0 ? `
           <div class="sv-tabs">
             ${sverses.map(([sid, s]) => `
-              <div class="sv-tab ${activeSvs[eid] === sid ? 'active' : ''}" onclick="selectSv('${eid}', '${sid}')">${s.name}</div>
+              <div class="sv-tab ${curSvId === sid ? 'active' : ''}" onclick="selectSv('${eid}', '${sid}')">${s.name}</div>
             `).join('')}
           </div>
         ` : ''}
-        <div class="sv-list" id="sv-list-${eid}-${sid}">
-          ${Object.entries(e.subversions[activeSvs[eid]].fields || {})
+        <div class="sv-list" id="sv-list-${eid}-${curSvId}">
+          ${curSv ? Object.entries(curSv.fields || {})
             .sort((a,b) => (a[1].order || 0) - (b[1].order || 0))
-            .map(([fid, f]) => renderField(eid, activeSvs[eid], fid, f)).join('')}
+            .map(([fid, f]) => renderField(eid, curSvId, fid, f)).join('') 
+            : '<div style="padding:20px; text-align:center; color:var(--txt-dim); font-size:0.8rem; opacity:0.5;">No hay subversiones</div>'}
         </div>
+        ${curSv ? `
         <div style="padding: 12px; display:flex; gap:8px;">
-          <button class="add-btn" style="margin: 0; padding: 8px; flex:1" onclick="addFieldPrompt('${eid}', '${activeSvs[eid]}')">+ Campo</button>
-          <button class="btn-sm btn-ghost" onclick="promotePrompt('${eid}', '${activeSvs[eid]}')">PROMOCIONAR</button>
-        </div>
+          <button class="add-btn" style="margin: 0; padding: 8px; flex:1" onclick="addFieldPrompt('${eid}', '${curSvId}')">+ Campo</button>
+          <button class="btn-sm btn-ghost" onclick="promotePrompt('${eid}', '${curSvId}')">PROMOCIONAR</button>
+        </div>` : ''}
       </div>
     `;
   }).join('');
@@ -579,6 +587,26 @@ function promoteVersion(sourceEid, sid, targetEid) {
     showToast(`Promocionado a ${targetEnvs.name}`);
   });
 }
+
+window.showHistory = () => {
+  const history = projects[curProjId].bus[curBuId].history || {};
+  const items = Object.values(history).sort((a,b) => new Date(b.date) - new Date(a.date));
+  
+  const html = items.length === 0 ? '<p style="color:var(--txt-dim)">Aún no hay pases registrados.</p>' : `
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      ${items.map(h => `
+        <div style="background:var(--bg); padding:12px; border-radius:8px; border:1px solid var(--border)">
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span style="font-weight:800; color:var(--accent); font-size:0.75rem;">${h.svName}</span>
+            <span style="font-size:0.6rem; color:var(--txt-dim)">${new Date(h.date).toLocaleString()}</span>
+          </div>
+          <div style="font-size:0.7rem;">De <b style="color:white">${h.source}</b> a <b style="color:white">${h.target}</b></div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  showModal("Historial de Promociones", html, closeModal, "Cerrar");
+};
 
 function generateEmail(sEid, sid, tEid) {
   const p = projects[curProjId];
