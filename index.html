@@ -144,7 +144,7 @@ body {
 
 /* --- Base Form Elements --- */
 .input {
-  background: var(--bg); border: 1px solid var(--border); padding: 12px 14px;
+  background: #1a1f26; border: 1px solid var(--border); padding: 12px 14px;
   border-radius: 10px; color: var(--txt); font-family: var(--font-sans); font-size: 0.85rem;
   width: 100%; transition: all 0.2s;
 }
@@ -214,6 +214,14 @@ select.input option { background: var(--surface); color: var(--txt); padding: 8p
 @media (max-width: 800px) {
   #menuBtn { display: flex; }
 }
+
+/* Checklist Styles */
+.checklist-group { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.checklist-title { font-weight: 800; color: var(--accent); margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
+.checklist-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); cursor: pointer; transition: background 0.2s; font-size: 0.75rem; line-height: 1.4; color: var(--txt-dim); }
+.checklist-item:hover { background: rgba(59, 130, 246, 0.05); color: var(--txt); }
+.checklist-item input { margin-top: 2px; accent-color: var(--accent); width: 14px; height: 14px; }
+
 .icon-only { font-weight: 900; }
 .spinner {
   width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent);
@@ -236,7 +244,7 @@ select.input option { background: var(--surface); color: var(--txt); padding: 8p
   <div class="project-list" id="projectList"></div>
   <div class="add-btn" onclick="openProjModal()">+ Nuevo Proyecto</div>
   <div style="margin-top: auto; padding: 12px; font-size: 0.6rem; color: var(--txt-dim); opacity: 0.5; border-top: 1px solid var(--border); text-align: center;">
-    v.202603250930
+    v.202603251535
   </div>
 </aside>
 
@@ -300,6 +308,7 @@ let projects = {};
 let curProjId = null;
 let curBuId = null;
 let activeSvs = {}; // { eid: sid }
+let checklistProg = {}; // { sid: { key: bool } }
 
 // DOM
 const listEl = document.getElementById('projectList');
@@ -575,9 +584,77 @@ window.promotePrompt = (eid, sid) => {
     </select>
   `, () => {
     const targetId = document.getElementById('targetEnv').value;
-    promoteVersion(eid, sid, targetId);
-    closeModal();
+    const targetName = envs[targetId].name.toLowerCase();
+    
+    if (targetName.includes('prod') || targetName.includes('producci')) {
+      showProductionChecklist(eid, sid, targetId);
+    } else {
+      promoteVersion(eid, sid, targetId);
+      closeModal();
+    }
   });
+};
+
+window.showProductionChecklist = (sourceEid, sid, targetEid) => {
+  if (!checklistProg[sid]) checklistProg[sid] = {};
+  
+  const jiraItems = [
+    "Usuario referente cargado en la historia (GDTI)",
+    "Estado Jira: LISTO PARA IMPLEMENTAR",
+    "Funcionalidad descrita en la historia",
+    "Evidencia de Testing en comentarios",
+    "Rollback especificado en Jira",
+    "Aprobación en Jira del usuario referente",
+    "Link del Invgate relacionado agregado",
+    "PDF del Invgate adjunto (aprobado)"
+  ];
+  
+  const invgateItems = [
+    "Usuario referente como autorizador",
+    "Firmado electrónicamente (aprobado)",
+    "Declaración de impacto en plataforma",
+    "Fecha y hora del pase definida",
+    "PDF del Invgate aprobado generado"
+  ];
+
+  const renderContent = () => {
+    const prog = checklistProg[sid];
+    return `
+      <div style="display:flex; gap:20px; text-align:left;">
+        <div class="checklist-group">
+          <div class="checklist-title">JIRA (Comité)</div>
+          ${jiraItems.map((it, i) => `
+            <label class="checklist-item">
+              <input type="checkbox" ${prog['j'+i]?'checked':''} onchange="updateCheck('${sid}', 'j${i}', this.checked)">
+              <span>${it}</span>
+            </label>
+          `).join('')}
+        </div>
+        <div class="checklist-group">
+          <div class="checklist-title">INVGATE</div>
+          ${invgateItems.map((it, i) => `
+            <label class="checklist-item">
+              <input type="checkbox" ${prog['i'+i]?'checked':''} onchange="updateCheck('${sid}', 'i${i}', this.checked)">
+              <span>${it}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+      <p style="font-size:0.65rem; color:var(--txt-dim); margin-top:15px; background:rgba(255,255,255,0.03); padding:8px; border-radius:6px;">
+        <b style="color:var(--warning)">ℹ️ Persistencia:</b> Puedes cerrar este modal para verificar datos y volver; tus marcas se mantendrán para esta subversión.
+      </p>
+    `;
+  };
+
+  showModal("Checklist de Cumplimiento Producción", renderContent(), () => {
+    promoteVersion(sourceEid, sid, targetEid);
+    closeModal();
+  }, "Confirmar y Promocionar");
+};
+
+window.updateCheck = (sid, key, val) => {
+  if (!checklistProg[sid]) checklistProg[sid] = {};
+  checklistProg[sid][key] = val;
 };
 
 function promoteVersion(sourceEid, sid, targetEid) {
