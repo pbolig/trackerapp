@@ -236,7 +236,7 @@ select.input option { background: var(--surface); color: var(--txt); padding: 8p
   <div class="project-list" id="projectList"></div>
   <div class="add-btn" onclick="openProjModal()">+ Nuevo Proyecto</div>
   <div style="margin-top: auto; padding: 12px; font-size: 0.6rem; color: var(--txt-dim); opacity: 0.5; border-top: 1px solid var(--border); text-align: center;">
-    v.202603250900
+    v.202603250930
   </div>
 </aside>
 
@@ -465,7 +465,7 @@ function renderField(eid, sid, fid, f) {
   const isE = f.email !== false;
   
   let control = `<input type="text" class="input" value="${f.val || ''}" onchange="updateF('${eid}','${sid}','${fid}', this.value)">`;
-  if (f.type === 'textarea') control = `<textarea class="input textarea" placeholder="Haz clic para expandir..." onclick="expandTextarea(this.value, '${f.label}')" onchange="updateF('${eid}','${sid}','${fid}', this.value)">${f.val || ''}</textarea>`;
+  if (f.type === 'textarea') control = `<textarea class="input textarea" placeholder="Haz clic para editar..." onclick="expandTextarea(this.value, '${f.label}', '${eid}', '${sid}', '${fid}')" onchange="updateF('${eid}','${sid}','${fid}', this.value)">${f.val || ''}</textarea>`;
   if (f.type === 'date') control = `<input type="date" class="input" value="${f.val || ''}" onchange="updateF('${eid}','${sid}','${fid}', this.value)">`;
   if (f.type === 'link') control = `<div style="display:flex;gap:4px;"><input type="text" class="input" value="${f.val || ''}" onchange="updateF('${eid}','${sid}','${fid}', this.value)"> <a href="${f.val}" target="_blank" class="btn-ghost btn-sm flex-center">↗</a></div>`;
 
@@ -661,11 +661,16 @@ window.rollback = (histId) => {
   }
 };
 
-window.expandTextarea = (val, label) => {
-  showModal(label, `
-    <textarea class="input" style="min-height: 300px; font-family: var(--font-mono); font-size: 0.8rem;" readonly>${val}</textarea>
-    <p style="font-size: 0.7rem; color: var(--txt-dim); margin-top: 10px;">Modo lectura expandida.</p>
-  `, closeModal, "Cerrar");
+window.expandTextarea = (val, label, eid, sid, fid) => {
+  showModal(`Editar ${label}`, `
+    <textarea id="modalTextarea" class="input" style="min-height: 400px; font-family: var(--font-mono); font-size: 0.85rem;">${val}</textarea>
+    <p style="font-size: 0.7rem; color: var(--txt-dim); margin-top: 10px;">Modo edición expandida activa.</p>
+  `, () => {
+    const newVal = document.getElementById('modalTextarea').value;
+    updateF(eid, sid, fid, newVal);
+    closeModal();
+    showToast("Cambios guardados desde modal");
+  }, "Guardar");
 };
 
 function generateEmail(sEid, sid, tEid) {
