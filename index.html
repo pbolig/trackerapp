@@ -380,10 +380,30 @@ onAuthStateChanged(auth, (user) => {
 function loadData() {
   onValue(ref(db, 'projects_v3'), (snap) => {
     projects = snap.val() || {};
+    
+    // Migración automática para Pedro Bolig
+    if (currentUser && currentUser.email === 'pedro.bolig@gmail.com') {
+      migrateLegacyProjects('pedro.bolig@gmail.com');
+    }
+
     renderSidebar();
     if (curProjId) refreshUI();
     document.getElementById('loading').style.display = 'none';
   });
+}
+
+function migrateLegacyProjects(targetEmail) {
+  let needsUpdate = false;
+  const updates = {};
+  Object.entries(projects).forEach(([id, p]) => {
+     if (!p.owner) {
+       updates[`projects_v3/${id}/owner`] = targetEmail;
+       needsUpdate = true;
+     }
+  });
+  if (needsUpdate) {
+    update(ref(db), updates).then(() => showToast("Proyectos vinculados a tu cuenta"));
+  }
 }
 
 function renderSidebar() {
