@@ -434,7 +434,9 @@ function migrateLegacyProjects(targetEmail) {
 function renderSidebar() {
   const ownProjects = Object.entries(projects).filter(([id, p]) => p.owner === currentUser.email);
   const sharedWithMeIds = Object.keys(sharedShares);
-  const sharedProjects = Object.entries(projects).filter(([id, p]) => sharedWithMeIds.includes(id));
+  const sharedProjects = Object.entries(projects).filter(([id, p]) => 
+    sharedWithMeIds.includes(id) && p.owner !== currentUser.email
+  );
 
   let html = `
     <div style="font-size:0.65rem; color:var(--accent); font-weight:800; margin:10px 0 5px 6px; letter-spacing:1px">MIS PROYECTOS</div>
@@ -1007,20 +1009,26 @@ window.toggleAuthMode = (mode) => {
 };
 
 window.doLogin = () => {
-  const email = document.getElementById('loginEmail').value;
-  const pass = document.getElementById('loginPass').value;
-  if(!email || !pass) return alert("Completa los datos");
-  signInWithEmailAndPassword(auth, email, pass).catch(err => alert("Error: " + err.message));
+  const email = document.getElementById('authEmail').value;
+  const pass = document.getElementById('authPass').value;
+  if (!email || !pass) return showToast("Completa los campos", "danger");
+  if (pass.length < 6) return showToast("La contraseña debe tener al menos 6 caracteres", "danger");
+  
+  signInWithEmailAndPassword(auth, email, pass).catch(err => showToast("Error: Correo o clave inválida", "danger"));
 };
 
 window.doRegister = () => {
-  const email = document.getElementById('regEmail').value;
-  const pass = document.getElementById('regPass').value;
-  if(!email || !pass) return alert("Completa los datos");
-  createUserWithEmailAndPassword(auth, email, pass).then(cred => {
-    alert("Usuario registrado exitosamente");
-    toggleAuthMode('login');
-  }).catch(err => alert("Error: " + err.message));
+  const email = document.getElementById('authEmail').value;
+  const pass = document.getElementById('authPass').value;
+  if (!email || !pass) return showToast("Completa los campos", "danger");
+  if (pass.length < 6) return showToast("La contraseña debe tener al menos 6 caracteres (Requisito de seguridad)", "danger");
+
+  createUserWithEmailAndPassword(auth, email, pass).then(() => {
+    showToast("Cuenta creada con éxito");
+  }).catch(err => {
+    if (err.code === 'auth/email-already-in-use') showToast("El correo ya está registrado", "danger");
+    else showToast("Error al crear cuenta", "danger");
+  });
 };
 
 window.doLogout = () => {
