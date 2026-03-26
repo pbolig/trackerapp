@@ -595,19 +595,37 @@ window.selectSv = (eid, sid) => {
 };
 
 window.openShareModal = (pid) => {
+  const p = projects[pid];
+  const sharedWith = p.sharedWith || {};
+  
   onValue(ref(db, 'users_v3'), (snap) => {
     const allUsers = snap.val() || {};
     const emails = Object.values(allUsers)
       .map(u => u.email)
-      .filter(e => e !== currentUser.email);
+      .filter(e => e !== currentUser.email && !sharedWith[escapeEmail(e)]);
 
-    showModal("Compartir Proyecto", `
-      <p style="font-size:0.8rem; color:var(--txt-dim); margin-bottom:10px;">Selecciona el usuario con el que deseas colaborar:</p>
+    let sharedListHtml = Object.entries(sharedWith).map(([encEmail, role]) => {
+      const email = encEmail.replace(/_/g, '.');
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; margin-bottom:6px;">
+          <div>
+            <div style="font-size:0.8rem; font-weight:600;">${email}</div>
+            <div style="font-size:0.6rem; color:var(--accent); text-transform:uppercase;">${role === 'editor' ? 'Editor' : 'Lector'}</div>
+          </div>
+          <button class="btn-sm btn-danger" onclick="unshare('${pid}', '${email}')" style="background:transparent">Quitar</button>
+        </div>
+      `;
+    }).join('');
+
+    showModal("Gestionar Colaboradores", `
+      ${sharedListHtml ? `<div style="margin-bottom:20px;"><p style="font-size:0.7rem; color:var(--txt-dim); margin-bottom:10px;">Usuarios con acceso:</p>${sharedListHtml}</div>` : ''}
+      <hr style="border:0; border-top:1px solid var(--border); margin:20px 0;">
+      <p style="font-size:0.7rem; color:var(--txt-dim); margin-bottom:10px;">Compartir con nuevo usuario:</p>
       <select id="shareEmail" class="input">
+        <option value="">Selecciona un usuario...</option>
         ${emails.map(e => `<option value="${e}">${e}</option>`).join('')}
       </select>
-      <p style="font-size:0.8rem; color:var(--txt-dim); margin:15px 0 10px 0;">Permisos:</p>
-      <select id="shareRole" class="input">
+      <select id="shareRole" class="input" style="margin-top:10px">
         <option value="reader">Solo Lectura (Lector)</option>
         <option value="editor">Lectura y Edición (Editor)</option>
       </select>
@@ -616,18 +634,29 @@ window.openShareModal = (pid) => {
       const role = document.getElementById('shareRole').value;
       if (!targetEmail) return alert("Selecciona un usuario");
       
-      const shareId = pid; // Usamos el PID como clave para simplificar (un share por proyecto por usuario)
-      set(ref(db, `shares_v3/${escapeEmail(targetEmail)}/${pid}`), {
-        pid,
-        role,
-        from: currentUser.email,
-        projectName: projects[pid].name
-      }).then(() => {
-        showToast(`Compartido con ${targetEmail}`);
+      const updates = {};
+      updates[`shares_v3/${escapeEmail(targetEmail)}/${pid}`] = { pid, role, from: currentUser.email };
+      updates[`projects_v3/${pid}/sharedWith/${escapeEmail(targetEmail)}`] = role;
+      
+      update(ref(db), updates).then(() => {
+        showToast("Acceso concedido");
         closeModal();
       });
     }, "Compartir");
   }, { onlyOnce: true });
+};
+
+window.unshare = (pid, targetEmail) => {
+  if (!confirm(`¿Revocar acceso a ${targetEmail}?`)) return;
+  const updates = {};
+  updates[`shares_v3/${escapeEmail(targetEmail)}/${pid}`] = null;
+  updates[`projects_v3/${pid}/sharedWith/${escapeEmail(targetEmail)}`] = null;
+  
+  update(ref(db), updates).then(() => {
+    showToast("Acceso revocado");
+    closeModal();
+    openShareModal(pid); // Reabrir para ver cambios
+  });
 };
 
 function isReadOnly() {
