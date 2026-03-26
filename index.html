@@ -363,6 +363,7 @@ let curBuId = null;
 let currentUser = null;
 let activeSvs = {}; // { eid: sid }
 let checklistProg = {}; // { sid: { key: bool } }
+let sharedShares = {}; // { pid: { role, from } }
 
 // DOM
 const listEl = document.getElementById('projectList');
