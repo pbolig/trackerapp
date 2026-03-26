@@ -1038,8 +1038,8 @@ window.toggleAuthMode = (mode) => {
 };
 
 window.doLogin = () => {
-  const email = document.getElementById('authEmail').value;
-  const pass = document.getElementById('authPass').value;
+  const email = document.getElementById('loginEmail').value;
+  const pass = document.getElementById('loginPass').value;
   if (!email || !pass) return showToast("Completa los campos", "danger");
   if (pass.length < 6) return showToast("La contraseña debe tener al menos 6 caracteres", "danger");
   
@@ -1047,8 +1047,8 @@ window.doLogin = () => {
 };
 
 window.doRegister = () => {
-  const email = document.getElementById('authEmail').value;
-  const pass = document.getElementById('authPass').value;
+  const email = document.getElementById('regEmail').value;
+  const pass = document.getElementById('regPass').value;
   if (!email || !pass) return showToast("Completa los campos", "danger");
   if (pass.length < 6) return showToast("La contraseña debe tener al menos 6 caracteres (Requisito de seguridad)", "danger");
 
