@@ -305,7 +305,7 @@ select.input option { background: var(--surface); color: var(--txt); padding: 8p
     <div id="pathSummary" style="font-weight: 800; font-size: 1.1rem; color: var(--txt-dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Selecciona un proyecto</div>
     <div style="display:flex; gap:8px; align-items:center;">
       <div class="bu-tabs" id="buTabs"></div>
-      <button class="tab tab-add" onclick="addEnvPrompt()" style="font-weight: 800; border: 1px dashed var(--accent);">+ Entorno</button>
+      <button class="tab tab-add" id="addEnvBtn" onclick="addEnvPrompt()" style="font-weight: 800; border: 1px dashed var(--accent);">+ Entorno</button>
     </div>
   </header>
   <div class="content">
@@ -371,6 +371,8 @@ const envGridEl = document.getElementById('envGrid');
 const pathEl = document.getElementById('pathSummary');
 const toastEl = document.getElementById('toast');
 
+const escapeEmail = (email) => email.replace(/\./g, '_');
+
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
@@ -378,6 +380,10 @@ onAuthStateChanged(auth, (user) => {
     document.getElementById('userLabel').innerText = user.email;
     document.getElementById('userAvatar').innerText = user.email.charAt(0).toUpperCase();
     showToast(`Bienvenido, ${user.email.split('@')[0]}`, 'accent');
+    
+    // Registro automático de usuarios (V5)
+    set(ref(db, `users_v3/${escapeEmail(user.email)}`), { email: user.email });
+    
     loadData();
   } else {
     currentUser = null;
@@ -392,17 +398,21 @@ onAuthStateChanged(auth, (user) => {
 });
 
 function loadData() {
+  // Escucha de proyectos
   onValue(ref(db, 'projects_v3'), (snap) => {
     projects = snap.val() || {};
     
-    // Migración automática para Pedro Bolig
     if (currentUser && currentUser.email === 'pedro.bolig@gmail.com') {
       migrateLegacyProjects('pedro.bolig@gmail.com');
     }
-
-    renderSidebar();
-    if (curProjId) refreshUI();
-    document.getElementById('loading').style.display = 'none';
+    
+    // Escucha de compartidos específicos del usuario
+    onValue(ref(db, `shares_v3/${escapeEmail(currentUser.email)}`), (shareSnap) => {
+      sharedShares = shareSnap.val() || {};
+      renderSidebar();
+      if (curProjId) refreshUI();
+      document.getElementById('loading').style.display = 'none';
+    });
   });
 }
 
@@ -421,22 +431,43 @@ function migrateLegacyProjects(targetEmail) {
 }
 
 function renderSidebar() {
-  const filtered = Object.entries(projects).filter(([id, p]) => {
-     return p.owner === currentUser.email;
-  });
+  const ownProjects = Object.entries(projects).filter(([id, p]) => p.owner === currentUser.email);
+  const sharedWithMeIds = Object.keys(sharedShares);
+  const sharedProjects = Object.entries(projects).filter(([id, p]) => sharedWithMeIds.includes(id));
 
-  listEl.innerHTML = filtered.map(([id, p]) => `
-    <div class="project-item ${curProjId === id ? 'active' : ''}" onclick="selectProj('${id}')">
-      <span class="icon-only">${((p && p.name) || '?').charAt(0)}</span>
-      <span>${(p && p.name) || 'Sin nombre'}</span>
-      <div class="actions">
-        <span onclick="event.stopPropagation(); deleteProj('${id}')" style="color: var(--danger)">✕</span>
+  let html = `
+    <div style="font-size:0.65rem; color:var(--accent); font-weight:800; margin:10px 0 5px 6px; letter-spacing:1px">MIS PROYECTOS</div>
+    ${ownProjects.map(([id, p]) => `
+      <div class="project-item ${curProjId === id ? 'active' : ''}" onclick="selectProj('${id}')">
+        <span class="icon-only">${(p.name || '?').charAt(0)}</span>
+        <span>${p.name || 'Sin nombre'}</span>
+        <div class="actions">
+          <span onclick="event.stopPropagation(); openShareModal('${id}')" title="Compartir" style="color:var(--accent); margin-right:4px;">👥</span>
+          <span onclick="event.stopPropagation(); deleteProj('${id}')" style="color: var(--danger)">✕</span>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `).join('')}
+  `;
+
+  if (sharedProjects.length > 0) {
+    html += `
+      <div style="font-size:0.65rem; color:var(--success); font-weight:800; margin:20px 0 5px 6px; letter-spacing:1px">COMPARTIDOS CONMIGO</div>
+      ${sharedProjects.map(([id, p]) => `
+        <div class="project-item ${curProjId === id ? 'active' : ''}" onclick="selectProj('${id}')">
+          <span class="icon-only" style="color:var(--success)">${(p.name || '?').charAt(0)}</span>
+          <span>${p.name || 'Sin nombre'}</span>
+          <div class="actions" style="opacity: 0.6">
+            <span style="font-size:0.5rem; color:var(--txt-dim)">${sharedShares[id].role === 'editor' ? 'ED' : 'RO'}</span>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  }
+
+  listEl.innerHTML = html;
   
-  if (filtered.length === 0) {
-    listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--txt-dim); font-size:0.8rem;">No hay proyectos. Crea uno nuevo.</div>';
+  if (ownProjects.length === 0 && sharedProjects.length === 0) {
+    listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--txt-dim); font-size:0.8rem;">Crea o comparte un proyecto para comenzar.</div>';
   }
 }
 
@@ -451,18 +482,23 @@ function refreshUI() {
   renderSidebar();
   renderTabs();
   renderGrid();
+  const readonly = isReadOnly();
   pathEl.innerHTML = curProjId ? `
     <span>${projects[curProjId].name}</span>
     <button class="btn-sm btn-ghost" style="margin-left:12px; font-size:0.6rem" onclick="showHistory()">HISTORIAL</button>
   ` : 'Selecciona un proyecto';
+  
+  const addEnvBtn = document.getElementById('addEnvBtn');
+  if (addEnvBtn) addEnvBtn.style.display = (curProjId && !readonly) ? 'block' : 'none';
 }
 
 function renderTabs() {
   if (!curProjId) return buTabsEl.innerHTML = '';
   const bus = projects[curProjId].bus || {};
+  const readonly = isReadOnly();
   buTabsEl.innerHTML = Object.entries(bus).map(([id, bu]) => `
     <div class="tab ${curBuId === id ? 'active' : ''}" onclick="selectBu('${id}')">${bu.name || 'Sin nombre'}</div>
-  `).join('') + `<div class="tab tab-add" onclick="addBuPrompt()" style="font-weight: 800; border: 1px dashed var(--accent);">+ Unidad Negocio</div>`;
+  `).join('') + (readonly ? '' : `<div class="tab tab-add" onclick="addBuPrompt()" style="font-weight: 800; border: 1px dashed var(--accent);">+ Unidad Negocio</div>`);
 }
 
 window.selectBu = (id) => { curBuId = id; renderTabs(); renderGrid(); };
@@ -491,14 +527,15 @@ function renderGrid() {
 
     const curSvId = activeSvs[eid];
     const curSv = (e.subversions && curSvId) ? e.subversions[curSvId] : null;
+    const readonly = isReadOnly();
 
     return `
       <div class="env-col ${envClass}">
         <div class="env-header" style="border-left-color: ${accentColor}; background: ${accentColor}08">
           <h3 style="flex:1">${e.name}</h3>
           <div style="display:flex; gap:8px;">
-            <button class="btn-sm btn-ghost" onclick="addSvPrompt('${eid}')">+ SUBVERSION</button>
-            <button class="btn-sm btn-danger" onclick="deleteEnv('${eid}')" style="background:transparent; padding:4px;">✕</button>
+            ${readonly ? '' : `<button class="btn-sm btn-ghost" onclick="addSvPrompt('${eid}')">+ SUBVERSION</button>`}
+            ${readonly ? '' : `<button class="btn-sm btn-danger" onclick="deleteEnv('${eid}')" style="background:transparent; padding:4px;">✕</button>`}
           </div>
         </div>
         ${sverses.length > 0 ? `
@@ -516,8 +553,8 @@ function renderGrid() {
         </div>
         ${curSv ? `
         <div style="padding: 12px; display:flex; gap:8px;">
-          <button class="add-btn" style="margin: 0; padding: 8px; flex:1" onclick="addFieldPrompt('${eid}', '${curSvId}')">+ Campo</button>
-          <button class="btn-sm btn-ghost" onclick="promotePrompt('${eid}', '${curSvId}')">PROMOCIONAR</button>
+          ${readonly ? '' : `<button class="add-btn" style="margin: 0; padding: 8px; flex:1" onclick="addFieldPrompt('${eid}', '${curSvId}')">+ Campo</button>`}
+          ${readonly ? '' : `<button class="btn-sm btn-ghost" onclick="promotePrompt('${eid}', '${curSvId}')">PROMOCIONAR</button>`}
         </div>` : ''}
       </div>
     `;
@@ -554,26 +591,72 @@ window.selectSv = (eid, sid) => {
   renderGrid();
 };
 
+window.openShareModal = (pid) => {
+  onValue(ref(db, 'users_v3'), (snap) => {
+    const allUsers = snap.val() || {};
+    const emails = Object.values(allUsers)
+      .map(u => u.email)
+      .filter(e => e !== currentUser.email);
+
+    showModal("Compartir Proyecto", `
+      <p style="font-size:0.8rem; color:var(--txt-dim); margin-bottom:10px;">Selecciona el usuario con el que deseas colaborar:</p>
+      <select id="shareEmail" class="input">
+        ${emails.map(e => `<option value="${e}">${e}</option>`).join('')}
+      </select>
+      <p style="font-size:0.8rem; color:var(--txt-dim); margin:15px 0 10px 0;">Permisos:</p>
+      <select id="shareRole" class="input">
+        <option value="reader">Solo Lectura (Lector)</option>
+        <option value="editor">Lectura y Edición (Editor)</option>
+      </select>
+    `, () => {
+      const targetEmail = document.getElementById('shareEmail').value;
+      const role = document.getElementById('shareRole').value;
+      if (!targetEmail) return alert("Selecciona un usuario");
+      
+      const shareId = pid; // Usamos el PID como clave para simplificar (un share por proyecto por usuario)
+      set(ref(db, `shares_v3/${escapeEmail(targetEmail)}/${pid}`), {
+        pid,
+        role,
+        from: currentUser.email,
+        projectName: projects[pid].name
+      }).then(() => {
+        showToast(`Compartido con ${targetEmail}`);
+        closeModal();
+      });
+    }, "Compartir");
+  }, { onlyOnce: true });
+};
+
+function isReadOnly() {
+  if (!curProjId) return false;
+  const project = projects[curProjId];
+  if (project.owner === currentUser.email) return false;
+  const share = sharedShares[curProjId];
+  return share && share.role === 'reader';
+}
+
 function renderField(eid, sid, fid, f) {
   const isP = f.promote !== false;
   const isE = f.email !== false;
+  const readonly = isReadOnly();
+  const disabledAttr = readonly ? 'disabled style="opacity:0.7; cursor:not-allowed"' : '';
   
-  let control = `<input type="text" class="input" value="${f.val || ''}" onchange="updateF('${eid}','${sid}','${fid}', this.value)">`;
-  if (f.type === 'textarea') control = `<textarea class="input textarea" placeholder="Haz clic para editar..." onclick="expandTextarea(this.value, '${f.label}', '${eid}', '${sid}', '${fid}')" onchange="updateF('${eid}','${sid}','${fid}', this.value)">${f.val || ''}</textarea>`;
-  if (f.type === 'date') control = `<input type="date" class="input" value="${f.val || ''}" onchange="updateF('${eid}','${sid}','${fid}', this.value)">`;
-  if (f.type === 'link') control = `<div style="display:flex;gap:4px;"><input type="text" class="input" value="${f.val || ''}" onchange="updateF('${eid}','${sid}','${fid}', this.value)"> <a href="${f.val}" target="_blank" class="btn-ghost btn-sm flex-center">↗</a></div>`;
+  let control = `<input type="text" class="input" value="${f.val || ''}" ${disabledAttr} onchange="updateF('${eid}','${sid}','${fid}', this.value)">`;
+  if (f.type === 'textarea') control = `<textarea class="input textarea" placeholder="${readonly ? 'Solo lectura' : 'Haz clic para editar...'}" ${readonly ? 'disabled style="opacity:0.7; cursor:not-allowed; cursor:default"' : ''} onclick="${readonly ? '' : `expandTextarea(this.value, '${f.label}', '${eid}', '${sid}', '${fid}')`}" onchange="updateF('${eid}','${sid}','${fid}', this.value)">${f.val || ''}</textarea>`;
+  if (f.type === 'date') control = `<input type="date" class="input" value="${f.val || ''}" ${disabledAttr} onchange="updateF('${eid}','${sid}','${fid}', this.value)">`;
+  if (f.type === 'link') control = `<div style="display:flex;gap:4px;"><input type="text" class="input" value="${f.val || ''}" ${disabledAttr} onchange="updateF('${eid}','${sid}','${fid}', this.value)"> <a href="${f.val}" target="_blank" class="btn-ghost btn-sm flex-center">↗</a></div>`;
 
   return `
     <div class="field" data-fid="${fid}">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2px;">
         <div style="display:flex; align-items:center;">
-          <span class="drag-handle" title="Arrastrar para reordenar">⠿</span>
+          ${readonly ? '' : '<span class="drag-handle" title="Arrastrar para reordenar">⠿</span>'}
           <span class="label">${f.label}</span>
         </div>
         <div class="field-flags">
-          <label title="Promocionar este campo"><input type="checkbox" ${isP?'checked':''} onchange="updateFlag('${eid}','${sid}','${fid}','promote',this.checked)"> Pase</label>
-          <label title="Incluir en mail de solicitud"><input type="checkbox" ${isE?'checked':''} onchange="updateFlag('${eid}','${sid}','${fid}','email',this.checked)"> Mail</label>
-          <span onclick="deleteField('${eid}','${sid}','${fid}')" style="cursor:pointer; color:var(--danger); font-size:0.7rem; margin-left:8px;">✕</span>
+          <label title="Promocionar este campo"><input type="checkbox" ${isP?'checked':''} ${disabledAttr} onchange="updateFlag('${eid}','${sid}','${fid}','promote',this.checked)"> Pase</label>
+          <label title="Incluir en mail de solicitud"><input type="checkbox" ${isE?'checked':''} ${disabledAttr} onchange="updateFlag('${eid}','${sid}','${fid}','email',this.checked)"> Mail</label>
+          ${readonly ? '' : `<span onclick="deleteField('${eid}','${sid}','${fid}')" style="cursor:pointer; color:var(--danger); font-size:0.7rem; margin-left:8px;">✕</span>`}
         </div>
       </div>
       ${control}
@@ -583,11 +666,13 @@ function renderField(eid, sid, fid, f) {
 
 // --- Logic ---
 window.updateF = (eid, sid, fid, val) => {
+  if (isReadOnly()) return;
   set(ref(db, `projects_v3/${curProjId}/bus/${curBuId}/envs/${eid}/subversions/${sid}/fields/${fid}/val`), val);
   showToast("Guardado");
 };
 
 window.updateFlag = (eid, sid, fid, prop, val) => {
+  if (isReadOnly()) return;
   set(ref(db, `projects_v3/${curProjId}/bus/${curBuId}/envs/${eid}/subversions/${sid}/fields/${fid}/${prop}`), val);
 };
 
@@ -609,6 +694,7 @@ window.openProjModal = () => {
 };
 
 window.addBuPrompt = () => {
+  if (isReadOnly()) return;
   showModal("Nueva Unidad de Negocio", `<input type="text" id="mInp" class="input" placeholder="Nombre (BSF, BSC...)">`, () => {
     const name = document.getElementById('mInp').value;
     if (!name) return;
@@ -618,6 +704,7 @@ window.addBuPrompt = () => {
 };
 
 window.addEnvPrompt = () => {
+  if (isReadOnly()) return;
   showModal("Nuevo Entorno", `<input type="text" id="mInp" class="input" placeholder="Nombre (Staging, Pre...)">`, () => {
     const name = document.getElementById('mInp').value;
     if (!name) return;
@@ -627,6 +714,7 @@ window.addEnvPrompt = () => {
 };
 
 window.addSvPrompt = (eid) => {
+  if (isReadOnly()) return;
   showModal("Nueva Subversion", `<input type="text" id="mInp" class="input" placeholder="Nombre (Office, API, Web, Mobile...)">`, () => {
     const name = document.getElementById('mInp').value;
     if (!name) return;
@@ -643,6 +731,7 @@ window.addSvPrompt = (eid) => {
 };
 
 window.addFieldPrompt = (eid, sid) => {
+  if (isReadOnly()) return;
   showModal("Añadir Campo", `
     <input type="text" id="fLabel" class="input" placeholder="Etiqueta (ej: Base de Datos)">
     <select id="fType" class="input" style="margin-top:10px">
@@ -818,6 +907,7 @@ window.showHistory = () => {
 };
 
 window.rollback = (histId) => {
+  if (isReadOnly()) return alert("No tienes permisos para realizar reversiones.");
   const h = projects[curProjId].bus[curBuId].history[histId];
   if (!h || !h.snapshot) return alert("No hay datos para revertir.");
   
