@@ -134,10 +134,13 @@ body {
 
 .sv-list { 
   padding: 4px; border-radius: 12px; transition: all 0.4s ease; border: 1px solid transparent;
+  max-height: 550px; overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: thin; scrollbar-color: rgba(129, 140, 248, 0.3) transparent;
 }
-.env-dev .sv-list { border-color: rgba(59,130,246,0.2) !important; box-shadow: inset 0 0 20px rgba(59,130,246,0.03); }
-.env-test .sv-list { border-color: rgba(245,158,11,0.2) !important; box-shadow: inset 0 0 20px rgba(245,158,11,0.03); }
-.env-prod .sv-list { border-color: rgba(16,185,129,0.2) !important; box-shadow: inset 0 0 20px rgba(16,185,129,0.03); }
+.sv-list::-webkit-scrollbar { width: 5px; }
+.sv-list::-webkit-scrollbar-track { background: transparent; }
+.sv-list::-webkit-scrollbar-thumb { background: rgba(129, 140, 248, 0.2); border-radius: 20px; }
+.sv-list::-webkit-scrollbar-thumb:hover { background: rgba(129, 140, 248, 0.4); }
 
 .textarea { min-height: 80px; resize: vertical; line-height: 1.5; font-family: inherit; cursor: zoom-in; }
 .textarea:hover { border-color: var(--accent); background: rgba(59, 130, 246, 0.03); }
@@ -181,10 +184,10 @@ select.input option { background: var(--surface); color: var(--txt); padding: 8p
 
 /* Utils */
 .flex-center { display: flex; align-items: center; justify-content: center; }
-  div::-webkit-scrollbar { width: 8px; height: 8px; }
-  div::-webkit-scrollbar-track { background: var(--bg); }
-  div::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.4); border-radius: 10px; border: 2px solid var(--bg); }
-  div::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: rgba(129, 140, 248, 0.2); border-radius: 20px; }
+  *::-webkit-scrollbar-thumb:hover { background: rgba(129, 140, 248, 0.5); }
 
 /* Advanced UI Enhancements */
 .field-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
